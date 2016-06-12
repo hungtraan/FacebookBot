@@ -37,14 +37,14 @@ def messaging_events(payload):
   for event in messaging_events:
     if "message" in event and "text" in event["message"]:
       yield event["sender"]["id"], event["message"]["text"].encode('unicode_escape')
-    else if "attachments" in event["message"]:
+    elif "attachments" in event["message"]:
       if "location" == event['message']['attachments'][0]["type"]:
         print "Received location"
         coordinates = event['message']['attachments'][0]['payload']['coordinates']
         latitude = coordinates['lat']
         longitude = coordinates['long']
         yield event["sender"]["id"], "I received your location: %s, %s"%(latitude, longitude)
-      else if "audio" == event['message']['attachments'][0]["type"]:
+      elif "audio" == event['message']['attachments'][0]["type"]:
         audio_url = event['message']['attachments'][0]['payload']['url']
         yield event["sender"]["id"], "I received your audio: %s".format(audio_url)
       else:
