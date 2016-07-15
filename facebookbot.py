@@ -8,6 +8,7 @@ from pattern.en import parsetree
 from datetime import datetime, timedelta
 import time
 from math import radians, cos, sin, asin, sqrt
+import random
 
 # import mysql.connector as mysql
 from bson.objectid import ObjectId
@@ -48,7 +49,8 @@ yelpClient = Client(auth)
 def before_request():
     g.user = None
     if 'user_id' in session:
-        g.user = get_user_mongo(session['user_id'])
+        g.user = get_user_mongo(ObjectId(session['user_id']), True)
+        # Note: session['user_id'] holds mongo's ObjectId(''), not Facebook user_id
 
 @app.before_request
 def make_session_permanent():
@@ -78,7 +80,6 @@ def handle_messages():
         # print "Incoming from %s: %s" % (sender, message)
         # print "User ID: %s" % (sender)
         response = processIncoming(sender, message)
-        print response
         if response is not None:
             send_message(PAT, sender, response)
     return "ok"
@@ -90,13 +91,14 @@ def processIncoming(user_id, message):
         if not user_exists(user_id): # First time user
             g.user = get_user_mongo(user_id)
             response = "%s %s, nice to meet you"%(sayHiTimeZone(), g.user['first_name'])
+            # Some functionality introduction here
             return response
         else:
             g.user = get_user_mongo(user_id)
-
-    # contextData = get_context(user_id)
+            session['user_id'] = str(g.user['_id'])
+            
     contextData = g.user['contexts']
-
+    
     if message['type'] == 'text':
         incomingMessage = message['data']
         if '.' not in incomingMessage:
@@ -123,18 +125,23 @@ def processIncoming(user_id, message):
                         send_message(PAT, user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
                         send_yelp_results(user_id, result['businesses'])
                         send_quick_replies_yelp(PAT, user_id)
-                # add_context(user_id, contextNow)
+                    else:
+                        pop_context()
+                        return "Sorry I can't find any places for that"
+                        # Follow up
                     return
-                # else:
-                    # yelp_search(searchTerm, location, coordinates=None, limit=None)
-                    # return yelp_search(context['terms'], context['location'])
-
+                else:
+                    pop_context()
+                    return
+                
         else:
-            print incomingMessage.lower()
             if isGreetings(incomingMessage):
                 greeting = "%s %s"%(sayHiTimeZone(), g.user['first_name'])
                 send_message(PAT, user_id, greeting)
                 return "How can I help you?"
+
+            if isGoodbye(incomingMessage):
+                return sayByeTimeZone()
 
             if yelp(verb):                
                 contextNow = {'context':'findFood', 
@@ -152,7 +159,7 @@ def processIncoming(user_id, message):
                     # follow up to ask for location
                     return message['data']
             else:        
-                return "I'm sorry I can't process that"
+                return #"I'm sorry I can't process that"
 
     elif message['type'] == 'location':
         send_message(PAT, user_id, "I've received location (%s,%s)"%(message['data'][0],message['data'][1]))
@@ -163,6 +170,7 @@ def processIncoming(user_id, message):
                 location = {'type':'coordinates','data': message['data']}
                 update_context(user_id, 'findFood', 'coordinates', message['data'])
                 add_yelp_location_history(user_id, location)
+                send_message(PAT, user_id, "Looking looking... :D")
                 result = yelp_search(context['terms'], None, message['data'])
                 if result['status'] == 1:
                     send_message(PAT, user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
@@ -174,19 +182,31 @@ def processIncoming(user_id, message):
         return "I've received audio %s"%(message['data'])
 
     elif message['type'] == 'quick_reply':
+        context = contextData[-1]
         cmd = message['data']
-        print cmd
-        # cmd: [yelp-more-results, yelp-ok]
-        if cmd == 'yelp-more-results':
-            result = yelp_search(context['terms'], context['coordinates'], context['location'], 5, 5)
+        # cmd: [yelp-more, yelp-ok]
+        if cmd == 'yelp-more':
+            increment_yelp_offset(user_id, 5)
+            offset = g.user['yelp_offset']
+            result = yelp_search(context['terms'], context['location'], context['coordinates'], 5, offset)
 
             if result['status'] == 1: # Successful search
                 send_message(PAT, user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
                 send_yelp_results(user_id, result['businesses'])
                 send_quick_replies_yelp(PAT, user_id)
+            else:
+                pop_context()
+                reset_yelp_offset()
+                return "That's all I found for now :)"
+
 
         elif cmd == 'yelp-ok':
-            pop_context(user_id)
+            pop_context()
+            reset_yelp_offset()
+            send_message(PAT, user_id, "Glad I can help :)")
+
+    else:
+        pop_context()
 
 def messaging_events(payload):
     """Generate tuples of (sender_id, message_text) from the
@@ -253,8 +273,8 @@ def user_exists(user_id):
         return False
     return True
 
-def get_user_mongo(user_id):
-    return users.find_one({'user_id': user_id})
+def get_user_mongo(user_id, useObjectId=False):
+    return users.find_one({'user_id': user_id}) if not useObjectId else users.find_one({'_id': user_id})
 
 def add_user_mongo(user_id, user_fb):
     user_insert = {'user_id': user_id, 
@@ -274,20 +294,34 @@ def get_context(user_id):
         return user['contexts']
 
 def add_context(user_id, context):
-    users.update({'user_id': user_id}, {"$push":{"contexts": context}})  
+    users.update({'user_id': user_id}, {"$push":{"contexts": context}})
+
+def increment_yelp_offset(user_id, offset):
+    users.update({"user_id":user_id},{"$inc":{"yelp_offset": offset}})
+    g.user = get_user_mongo(user_id)
+
+def reset_yelp_offset():
+    users.update({"user_id": g.user['user_id']},{"$set":{"yelp_offset": 0}})
 
 def update_context(user_id, find_by, context_to_update, content):
     users.update({'user_id': user_id, "contexts.context": find_by},
         { "$set": { "contexts.$.%s"%(context_to_update) : content } })
-
-
-def pop_context(user_id):
-    users.update({'user_id': user_id}, {"$pop":{"contexts":1}})
-    # Not working yet?
+    
+def pop_context(user_id=None):
+    if user_id is None:
+        users.update({'_id': g.user['_id']}, {"$pop":{"contexts":1}})
+    else:
+        users.update({'user_id': user_id}, {"$pop":{"contexts":1}})
+    
+def get_most_recent_location_yelp(user_id=None):
+    if user_id is None:
+        return g.user['yelp_location_history'][-1]
+    else:
+        return users.find_one({'user_id': user_id})['yelp_location_history'][-1]
 
 def add_yelp_location_history(user_id, location):
-    users.update({'user_id': user_id}, {"$addToSet":{"yelp_location_history": location}})    
-
+    users.update({'user_id': user_id}, {"$addToSet":{"yelp_location_history": location}})
+    
 def log_message(sender, mes_type, message):
     now = datetime.now()
     timeStr = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
@@ -344,7 +378,7 @@ def send_template_yelp(token, recipient, businesses):
 
     for business in businesses:
         subtitle = business['address'] 
-        if business['distance']:
+        if 'distance' in business:
             subtitle += " (" + str(business['distance']) + " mi.)"
         subtitle += "\n" + business['categories']
 
@@ -389,11 +423,11 @@ def send_quick_replies_yelp(token, user_id):
     quickRepliesOptions = [
         {"content_type":"text",
          "title": "Get more suggestions",
-         "payload": 'payload_more'
+         "payload": 'yelp-more'
         },
         {"content_type":"text",
          "title": "That's good for me",
-         "payload": 'payload_ok'
+         "payload": 'yelp-ok'
         }
     ]
     data = json.dumps({
@@ -412,22 +446,6 @@ def send_quick_replies_yelp(token, user_id):
     if r.status_code != requests.codes.ok:
         print r.text
 
-# Sample payload:
-# {u'entry': [
-#     {u'messaging': [
-#         {u'timestamp': 1468467707943, 
-#         u'message': {u'text': u'Hi', 
-#                     u'mid': u'mid.1468467707933:28c1920c7b192b2c13', 
-#                     u'seq': 660}, 
-#         u'recipient': {u'id': u'1384358948246110'},
-#         u'sender': {u'id': u'1389166911110336'}
-#         }
-#         ], 
-#     u'id': u'1384358948246110', u'time': 1468467707984}
-#     ], 
-# u'object': u'page'
-# }
-
 def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
         limit = 5
@@ -439,14 +457,20 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
         'offset': offset
         # 'category_filter':''
     }
-    if coordinates is not None:
-        response = yelpClient.search_by_coordinates(coordinates[0], coordinates[1], **params)
-    elif location != '':
-        response = yelpClient.search(location, **params)
-    
+
     returnData = {}
     returnData['businesses'] = []
+    returnData['status'] = 0
     
+    try:
+        if coordinates is not None:
+            response = yelpClient.search_by_coordinates(coordinates[0], coordinates[1], **params)
+        elif location != '':
+            response = yelpClient.search(location, **params)
+    except Exception, e:
+        print e
+        return returnData
+            
     if len(response.businesses):
         returnData['status'] = 1
         for biz in response.businesses:
@@ -499,12 +523,8 @@ def removePunctuation(str):
     return str.translate(None, string.punctuation)
 
 def sayHiTimeZone():
-    user_tz = g.user['timezone']
-    offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
-    server_tz = offset / 60 / 60 * -1
-    time_diff = user_tz - server_tz
     server_now = datetime.now()
-    user_now = server_now + timedelta(hours=time_diff)
+    user_now = getUserTime()
     if recentChat(server_now):
         return "Hi again"
     if user_now.hour < 12:
@@ -514,9 +534,28 @@ def sayHiTimeZone():
     else:
         return "Good evening"
 
+def sayByeTimeZone():
+    user_now = getUserTime()
+    goodnights = ["Good night", "Have a good night", "Bye now", "See you later"]
+    byes = ["Goodbye", "Bye then", "See you later", "Bye, have a good day"]
+    
+    if user_now.hour > 20:
+        return goodnights[random.randint(0,len(goodnights))]
+    else:
+        return byes[random.randint(0,len(byes))]
+
+def getUserTime():
+    user_tz = g.user['timezone']
+    offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
+    server_tz = offset / 60 / 60 * -1
+    time_diff = user_tz - server_tz
+    server_now = datetime.now()
+    return server_now + timedelta(hours=time_diff)
+
 def recentChat(now):
-    message = log.find_one({'sender': g.user['user_id']}, sort=[("timestamp", DESCENDING)])
-    timestamp = datetime.strptime(message['timestamp'],"%Y-%m-%d %H:%M:%S")
+    recent2messages = log.find({'sender': g.user['user_id']}, sort=[("timestamp", DESCENDING)]).limit(2)
+    messageToCheck = recent2messages[1]
+    timestamp = datetime.strptime(messageToCheck['timestamp'],"%Y-%m-%d %H:%M:%S")
     time_since_chat = now - timestamp
     recent30min = timedelta(minutes=30)
     if time_since_chat < recent30min:
