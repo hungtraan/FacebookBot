@@ -2,6 +2,8 @@ from yelp.client import Client
 from yelp.oauth1_authenticator import Oauth1Authenticator
 from math import radians, cos, sin, asin, sqrt
 import config
+from bs4 import BeautifulSoup
+import requests
 # Yelp Auth
 auth = Oauth1Authenticator(
     consumer_key=config.CONSUMER_KEY,
@@ -30,6 +32,7 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     try:
         if coordinates is not None:
             response = yelpClient.search_by_coordinates(coordinates[0], coordinates[1], **params)
+            print response
         elif location != '':
             response = yelpClient.search(location, **params)
     except Exception, e:
@@ -67,6 +70,27 @@ def calculate_distance(coord1, coord2):
     dlat = lat2 - lat1 
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
     c = 2 * asin(sqrt(a)) 
-    km = 6367 * c
+    km = 6371 * c # earth radius * c
     mi = km / 1.609344
     return round(mi, 2)
+
+def filtered_search(returnData, filter_list):
+    businesses = returnData['businesses']
+    result = []
+    for business in businesses:
+        url = business['url']
+        r = requests.get(url)
+        soup = BeautifulSoup(r, "html")
+        attr_list = soup.select('.short-def-list > dl')
+        open_div = soup.select(".open")
+
+        if 'wifi' in filter_list:
+            for attr in attr_list:
+                if "Wi-Fi" in str(attr) and "Free" in str(attr):
+                    if 'open_now' in filter_list:
+                        if len(open_div) != 0:
+                            result.append(business)
+                    else:
+                        result.append(business)
+
+    return result

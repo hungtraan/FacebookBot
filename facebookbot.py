@@ -13,7 +13,7 @@ from pymongo import MongoClient
 
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_object('config')
-app.config.from_pyfile('config.py')
+# app.config.from_pyfile('config.py')
 
 mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
@@ -50,8 +50,8 @@ def handle_messages():
     return "ok"
 
 def processIncoming(user_id, message):
-    if not MongoHelper.user_exists(user_id): # First time user
-        g.user = MongoHelper.get_user_mongo(users, user_id, True)
+    if not MongoHelper.user_exists(users, user_id): # First time user
+        g.user = MongoHelper.get_user_mongo(users, user_id)
         response = "%s %s, nice to meet you"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
         # Some functionality introduction here
         return response
@@ -61,16 +61,16 @@ def processIncoming(user_id, message):
     now = datetime.now()
     timestamp = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
     last_seen = datetime.strptime(g.user['last_seen'],"%Y-%m-%d %H:%M:%S")
-    recent5min = timedelta(minutes=5)
+    recent5min = now - timedelta(minutes=5)
 
-    if last_seen > recent5min:
+    if last_seen < recent5min:
         MongoHelper.update_last_seen(users, g.user, timestamp)
 
     contextData = g.user['contexts']
     
     if message['type'] == 'text':
-        incomingMessage = message['data']
-        if '.' not in incomingMessage:
+        incomingMessage = NLP.removePunctuation(message['data'])
+        if '.' not in incomingMessage: # help separate sentence for parsetree
             incomingMessage+="."
         s = parsetree(incomingMessage, relations=True, lemmata=True)
         sentence = s[0]
@@ -79,8 +79,14 @@ def processIncoming(user_id, message):
         nounPhrase = NLP.findNounPhrase(sentence)
         # print "NPs: ", nounPhrase
 
+        if NLP.dismissPreviousRequest(sentence):
+            MongoHelper.pop_context(users, g.user)
+            return "Sure, no problem"
+
         if contextData is not None and len(contextData) > 0:
             context = contextData[-1]
+
+            # Find food functionality
             if context['context'] == 'findFood':
                 if context['location'] == None and context['coordinates'] == None:
                     context['location'] = nounPhrase
@@ -140,6 +146,7 @@ def processIncoming(user_id, message):
                 MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', message['data'])
                 MongoHelper.add_yelp_location_history(users, g.user, location)
                 FacebookAPI.send_message(app.config['PAT'], user_id, "Looking looking... :D")
+
                 result = Yelp.yelp_search(context['terms'], None, message['data'])
                 if result['status'] == 1:
                     FacebookAPI.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
@@ -185,6 +192,7 @@ def messaging_events(payload):
     data = json.loads(payload)
     # print data
     messaging_events = data["entry"][0]["messaging"]
+    
     for event in messaging_events:
         sender_id = event["sender"]["id"]
         if "message" in event and "text" in event["message"] and "quick_reply" not in event["message"]:
@@ -198,6 +206,7 @@ def messaging_events(payload):
                     0]['payload']['coordinates']
                 latitude = coordinates['lat']
                 longitude = coordinates['long']
+
                 MongoHelper.log_message(log, sender_id, 'coordinates', str([latitude, longitude]))
                 yield sender_id, {'type':'location','data':[latitude, longitude]}
 

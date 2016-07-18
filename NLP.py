@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 import time
 import string
 import random
+from pattern.en import parsetree, singularize
+from pattern.search import search
 
 def removePunctuation(str):
     return str.translate(None, string.punctuation)
@@ -34,8 +36,8 @@ def recentChat(user):
     last_seen = user['last_seen'] 
     timestamp = datetime.strptime(last_seen,"%Y-%m-%d %H:%M:%S")
     time_since_chat = datetime.now() - timestamp
-    recent30min = timedelta(minutes=60)
-    if time_since_chat < recent30min:
+    recent60min = timedelta(minutes=60)
+    if time_since_chat < recent60min:
         return True
     else:
         return False
@@ -92,13 +94,18 @@ def findProperNoun(sentence):
     return None
 
 def yelp(verbList):
-    print verbList
     yelpVerbs = ['eat', 'drink', 'find']
     for verb in verbList:
         if verb.lower() in yelpVerbs:
             return True
     return False
 
+def dismissPreviousRequest(sentence):
+    stop_signals = ["never mind", "no", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
+    for signal in stop_signals:
+        if signal in sentence.string.lower():
+            return True
+    return False
 
 def nearBy(sentence):
     res = ""
@@ -110,3 +117,32 @@ def nearBy(sentence):
     if res in ['near', 'around here', 'around', 'here', 'near here', 'nearby', 'near by', 'close by', 'close']:
         return True
     return False
+
+def fullQuery(sentence):
+    new_str = ""
+    for word in sentence.words:
+        if word.string in ['places', 'locations', 'spots']:
+            continue
+        new_word = singularize(word.string) if word.type == "NNS" else word.string
+        new_str += new_word + " "
+    singularized_sentence = parsetree(new_str, relations=True, lemmata=True)
+
+    
+    m = search('{JJ? NN+} IN {JJ? NN+}', singularized_sentence)
+    query = {}
+    if len(m) > 0:
+        query["term"] = m[0].group(1).string
+        query["location"] = m[0].group(2).string
+    return query
+
+def openNow(sentence):
+    if "open now" in sentence.string or "opens now" in sentence.string:
+        return True
+    return False
+
+def hasWifi(sentence):
+    string = removePunctuation(sentence.string.lower())
+    if "wifi" in string:
+        return True
+    return False
+

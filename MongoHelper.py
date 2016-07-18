@@ -12,7 +12,7 @@ def user_exists(users, user_id):
     user = users.find_one({'user_id': user_id})
     if user is None:
         user_fb = get_user_fb(PAT, user_id)
-        create_user_mongo(user_id, user_fb)
+        create_user_mongo(users, user_id, user_fb)
         return False
     return True
 
@@ -20,7 +20,8 @@ def user_exists(users, user_id):
 def create_user_mongo(users, user_id, user_fb):
     timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
     user_insert = {'user_id': user_id, 
-                    'last_seen': timestamp,
+                    'created_at': timestamp,
+                    'last_seen': "1970-01-01 00:00:00",
                     'first_name':user_fb['first_name'],
                     'last_name':user_fb['last_name'],
                     'gender': user_fb['gender'],
@@ -57,10 +58,11 @@ def update_context(users, user, find_by, context_to_update, content):
 def pop_context(users, user):
     users.update({'_id': user['_id']}, {"$pop":{"contexts":1}})
     
-def add_yelp_location_history(users, user_id, location):
-    users.update({'user_id': user_id}, {"$addToSet":{"yelp_location_history": location}})
+def add_yelp_location_history(users, user, location):
+    users.update({'_id': user['_id']}, {"$addToSet":{"yelp_location_history": location}})
     
 def log_message(log, sender, mes_type, message):
     now = datetime.now()
     timeStr = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
-    log.insert_one({"sender":sender, "type": mes_type, "message":message, "timestamp": timeStr })
+    log.insert_one({"sender":sender, "type": mes_type, 
+        "message":message, "timestamp": timeStr })
