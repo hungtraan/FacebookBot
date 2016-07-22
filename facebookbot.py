@@ -5,6 +5,7 @@ import Yelp
 import FacebookAPI
 import NLP
 import MongoHelper
+import Speech.processor as STT # Speech to Text
 
 from pattern.en import parsetree
 from datetime import datetime, timedelta
@@ -49,7 +50,7 @@ def handle_messages():
             FacebookAPI.send_message(app.config['PAT'], sender, response)
     return "ok"
 
-def processIncoming(user_id, message):
+def processIncoming(user_id, message, just_text=False):
     if not MongoHelper.user_exists(users, user_id): # First time user
         g.user = MongoHelper.get_user_mongo(users, user_id)
         response = "%s %s, nice to meet you"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
@@ -68,8 +69,10 @@ def processIncoming(user_id, message):
 
     contextData = g.user['contexts']
     
-    if message['type'] == 'text':
-        incomingMessage = NLP.removePunctuation(message['data'])
+    if just_text or message['type'] == 'text':
+        message_text = message if just_text else message['data']
+        print message_text
+        incomingMessage = message_text # NLP.removePunctuation(message_text)
         if '.' not in incomingMessage: # help separate sentence for parsetree
             incomingMessage+="."
         s = parsetree(incomingMessage, relations=True, lemmata=True)
@@ -132,7 +135,7 @@ def processIncoming(user_id, message):
                     return "Can you send me your whereabouts?"
                 else:
                     # follow up to ask for location
-                    return message['data']
+                    return message_text
             else:        
                 return #"I'm sorry I can't process that"
 
@@ -155,7 +158,13 @@ def processIncoming(user_id, message):
                 return
 
     elif message['type'] == 'audio':
-        return "I've received audio %s"%(message['data'])
+        audio_url = message['data']
+        # print audio_url
+        # FacebookAPI.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
+        message_text = STT.transcribe(audio_url)
+        message_text = message_text.decode('utf-8')
+        return processIncoming(user_id, message_text, True)
+        # return
 
     elif message['type'] == 'quick_reply':
         context = contextData[-1]
@@ -233,17 +242,6 @@ def get_user_from_message(payload):
 def get_most_recent_locations_yelp(limit=3):
     locations = g.user['yelp_location_history']
     return locations[-5:] if len(locations) > limit else locations
-
-# posts.update({"_id":5678},{"$set":{"from_user":"Alberto","source":"unavailable"}}, upsert=True)
-# posts.find({"_id":5678}).count()
-# posts.update({"_id":1234},{"$unset":{"total_posts":""}})
-# posts.update({"_id":1234},{"$pop":{"sentiment":1}})
-# posts.update({"_id":1234},{"$push":{"sentiment":{"nb":random.randint(-5, 5),"svm":random.randint(-5, 5)}}})
-# posts.update({"_id":5678},{"$addToSet":{"skills":"python"}})  # adds a value to an array only if the value is not in the array already
-# posts.update({"_id":5678},{"$pull":{"skills":"java"}}) # The pull operator removes all instances of a value from an existing array. 
-
-# https://console.ng.bluemix.net/?direct=classic/#/resources/serviceGuid=be619d85-cc2a-42be-85d1-97e6468cf813&orgGuid=5e25a0af-ebbd-467d-94c8-fa82ad647f70&spaceGuid=cbeefcec-89d7-482a-83df-183b978ec969&paneId=1
-# http://www.ibm.com/watson/developercloud/doc/speech-to-text/http.shtml
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
