@@ -1,7 +1,7 @@
 import subprocess, os
 
 # path to ffmpeg bin
-FFMPEG_PATH = '/usr/local/bin/ffmpeg'
+FFMPEG_PATH = os.environ['FFMPEG_PATH'] if 'FFMPEG_PATH' in os.environ else '/usr/local/bin/ffmpeg'
 
 def convert(file_path):
     # create output directory if necessary
