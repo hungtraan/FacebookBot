@@ -1,7 +1,6 @@
 # Retrieve file from Facebook
 
 import urllib, convert, re, os
-# from speech_py import speech_to_text_offline as STT_o
 # from speech_py import speech_to_text_google as STT
 from speech_py import speech_to_text_ibm_rest as STT
 
