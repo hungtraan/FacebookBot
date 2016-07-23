@@ -159,7 +159,11 @@ def processIncoming(user_id, message, just_text=False):
         audio_url = message['data']
         # print audio_url
         # FacebookAPI.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
-        message_text = STT.transcribe(audio_url)
+        try:
+            message_text = STT.transcribe(audio_url)
+        except Exception, e:
+            message_text = "Sorry I can't process that now"
+            print e
         message_text = message_text.decode('utf-8')
         return processIncoming(user_id, message_text, True)
         # return
