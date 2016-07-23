@@ -8,10 +8,12 @@ from pattern.en import parsetree
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 
-app = Flask(__name__)
-app = Flask(__name__, instance_relative_config=True)
-app.config.from_object('config')
-app.config.from_pyfile('config.py')
+application = Flask(__name__)
+application = Flask(__name__, instance_relative_config=True)
+application.config.from_object('config')
+application.config.from_pyfile('config.py')
+
+app = application
 
 mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
