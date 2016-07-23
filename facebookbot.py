@@ -8,7 +8,6 @@ from pattern.en import parsetree
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 
-application = Flask(__name__)
 application = Flask(__name__, instance_relative_config=True)
 application.config.from_object('config')
 application.config.from_pyfile('config.py', silent=True)
@@ -31,7 +30,7 @@ def handle_verification():
         print "Verification successful!"
         return request.args.get('hub.challenge', '')
     else:
-        print "Verification failed!"
+        print "Verification failed!!!"
         return 'Error, wrong validation token'
 
 
