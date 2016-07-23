@@ -1,23 +1,4 @@
-import speech_recognition as sr
 import credentials
-# offline analyzer as a fallback
-def speech_to_text_offline(file_path):
-	# use the audio file as the audio source
-	r = sr.Recognizer()
-	with sr.AudioFile(file_path) as source:
-	    audio = r.record(source) # read the entire audio file
-
-	# # recognize speech using Sphinx
-	try:
-		print "Transcribing..."
-		recognized = r.recognize_sphinx(audio)
-		# print("Sphinx: " + recognized)
-		return recognized
-	except sr.UnknownValueError:
-	    print("Sphinx could not understand audio")
-	except sr.RequestError as e:
-	    print("Sphinx error; {0}".format(e))
-
 
 def speech_to_text_ibm_rest(file_path):
 	print 'Transcribing...'
