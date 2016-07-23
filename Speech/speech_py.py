@@ -1,5 +1,5 @@
 import speech_recognition as sr
-
+import credentials
 # offline analyzer as a fallback
 def speech_to_text_offline(file_path):
 	# use the audio file as the audio source
@@ -22,7 +22,7 @@ def speech_to_text_offline(file_path):
 def speech_to_text_ibm_rest(file_path):
 	print 'Transcribing...'
 	endpoint = 'https://stream.watsonplatform.net/speech-to-text/api/v1/recognize'
-	auth = "Basic " + base64.b64encode('c224d410-abd8-4783-97a7-02ff3feb6d3c:sVDa2MAL4gQU')
+	auth = "Basic " + base64.b64encode('%s:%s'%(credentials.IBM_STT_USERNAME, credentials.IBM_STT_PASSWORD))
 	headers = {'Content-Type': 'audio/wav',
 				'Authorization': auth}
 	# return summary[1]['hypothesis']
