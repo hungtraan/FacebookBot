@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 DEBUG=False
-=======
-DEBUG=True
->>>>>>> 99224ce34f292e08bb220fbae47172e5a690a318
 # Facebook Page Access Token
 PAT = 'EAADhYj0lr14BAGP2HCx2mcYcxQbtQG7iXfaGpOieFsGlgJEYv0Y74bdIYtQ3UcnK1kktfUCDInciDniwTOm1c6l2Fq2GEBsm0Lu4syz5HUc41MGepASZBuXw1caZBkZBGRX5kIZCT7q5QOkiPVnZC3n8iBcqVMCBGnZCiSgscQogZDZD'
 

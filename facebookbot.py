@@ -1,43 +1,17 @@
 import sys
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
 import json
 from Utils import Yelp, FacebookAPI, NLP, MongoHelper
 from Speech import processor as STT # Speech to Text
->>>>>>> Stashed changes
-
-from flask import Flask, request, session, g
-=======
-# import requests
->>>>>>> 99224ce34f292e08bb220fbae47172e5a690a318
-import json
-import Yelp
-import FacebookAPI
-import NLP
-import MongoHelper
-import Speech.processor as STT # Speech to Text
+from flask import Flask, request, g
 
 from pattern.en import parsetree
 from datetime import datetime, timedelta
-from flask import Flask, request, g
 from pymongo import MongoClient
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
 app = Flask(__name__)
-app.config['DEBUG'] = True
-app.config['SECRET_KEY'] = 'development key'
-=======
 app = Flask(__name__, instance_relative_config=True)
 app.config.from_object('config')
 app.config.from_pyfile('config.py')
->>>>>>> Stashed changes
-=======
-app = Flask(__name__, instance_relative_config=True)
-app.config.from_object('config')
-# app.config.from_pyfile('config.py')
->>>>>>> 99224ce34f292e08bb220fbae47172e5a690a318
 
 mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database

@@ -6,18 +6,12 @@ Jinja2==2.8
 MarkupSafe==0.23
 requests==2.10.0
 Werkzeug==0.11.10
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> 99224ce34f292e08bb220fbae47172e5a690a318
 google-api-python-client==1.5.1
 autobahn>=0.10.9
 pyOpenSSL>=0.13.1
 requests>=2.8.1
 Twisted>=13.2.0
 txaio>=2.0.4
-<<<<<<< HEAD
 service_identity>=16.0.0
 SpeechRecognition
 yelp==1.0.2
@@ -25,7 +19,3 @@ Sphinx==1.3.1
 pymongo==3.3.0
 oauth2==1.9.0.post1
 oauth2client==2.2.0
->>>>>>> Stashed changes
-=======
-service_identity>=16.0.0
->>>>>>> 99224ce34f292e08bb220fbae47172e5a690a318
