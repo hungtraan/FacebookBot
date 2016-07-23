@@ -1,4 +1,10 @@
 import sys
+<<<<<<< Updated upstream
+=======
+import json
+from Utils import Yelp, FacebookAPI, NLP, MongoHelper
+from Speech import processor as STT # Speech to Text
+>>>>>>> Stashed changes
 
 from flask import Flask, request, session, g
 import json
@@ -18,9 +24,15 @@ from pymongo import MongoClient, DESCENDING
 from yelp.client import Client
 from yelp.oauth1_authenticator import Oauth1Authenticator
 
+<<<<<<< Updated upstream
 app = Flask(__name__)
 app.config['DEBUG'] = True
 app.config['SECRET_KEY'] = 'development key'
+=======
+app = Flask(__name__, instance_relative_config=True)
+app.config.from_object('config')
+app.config.from_pyfile('config.py')
+>>>>>>> Stashed changes
 
 # app.config['MONGO_DBNAME'] = 'facebookbot'
 # app.config['MONGO_URI'] = 'mongodb://localhost:27017/facebookbot'
