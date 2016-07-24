@@ -7,6 +7,7 @@ def convert(file_path):
     # create output directory if necessary
     if not os.path.isdir('./audio/converted'):
         os.makedirs('./audio/converted')
+        print "Created dir converted"
 
     file = file_path.split('/')[-1]
     name_without_extension = ''.join(file.split('.')[:-1])
@@ -14,6 +15,7 @@ def convert(file_path):
     
     try:
         # ffmpeg -i my_video.mp4 -threads 8 output_audio.wav 
+        print FFMPEG_PATH
         command = [
             FFMPEG_PATH, '-i', file_path, '-y', '-loglevel', '16','-threads', '8', output
         ]
