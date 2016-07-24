@@ -8,8 +8,9 @@ def convert(file_path):
     if not os.path.isdir('./audio/converted'):
         os.makedirs('./audio/converted')
         print "Created dir converted"
+        print os.path.abspath(os.getcwd())
         print os.path.isdir('./audio/converted')
-
+    print file_path
     file = file_path.split('/')[-1]
     name_without_extension = ''.join(file.split('.')[:-1])
     output = './audio/converted/{}.wav'.format(name_without_extension)

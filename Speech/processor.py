@@ -13,6 +13,7 @@ def transcribe(audio_url):
 	reg_ex = '\w+.mp4'
 	file_name = re.search(reg_ex, audio_url).group(0)
 	urllib.urlretrieve(audio_url, './audio/retrieved_audio/{}'.format(file_name))
-	convert.convert('./audio/retrieved_audio/{}'.format(file_name))
+	file_path = './audio/retrieved_audio/{}'.format(file_name)
+	convert.convert(file_path)
 	# Converted in: ./converted/{name}.wav
 	return STT('./audio/converted/{}'.format(file_name[:-4]+".wav"))
