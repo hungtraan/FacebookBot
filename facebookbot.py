@@ -162,7 +162,9 @@ def processIncoming(user_id, message, just_text=False):
             message_text = STT.transcribe(audio_url)
         except Exception, e:
             message_text = "Sorry I can't process that now"
+            FacebookAPI.send_message(app.config['PAT'], user_id, message_text)
             print e
+            return
         message_text = message_text.decode('utf-8')
         return processIncoming(user_id, message_text, True)
         # return

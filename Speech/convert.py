@@ -18,6 +18,7 @@ def convert(file_path):
             FFMPEG_PATH, '-i', file_path, '-y', '-loglevel', '16','-threads', '8', output
         ]
         subprocess.call(command)  # call the ffmpeg command to convert
+        print "File converted: %s"%(output)
         file_to_remove = os.getcwd() + file_path[1:]
         rm_command = ['rm', file_to_remove]
         subprocess.call(rm_command)
