@@ -14,4 +14,5 @@ def convert(file_path):
         return raw_audio
         
     except Exception, e:
+        print Exception
         print e
