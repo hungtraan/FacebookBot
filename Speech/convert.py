@@ -4,7 +4,7 @@ import subprocess as sp, os
 FFMPEG_PATH = os.environ['FFMPEG_PATH'] if 'FFMPEG_PATH' in os.environ else '/usr/local/bin/ffmpeg'
 
 def convert(file_path):
-    
+    print file_path
     try:
         command = [
             FFMPEG_PATH, '-i', file_path, '-y', '-loglevel', '16','-threads', '8',  '-c:v', 'mp4' , '-f', 'wav' , '-'

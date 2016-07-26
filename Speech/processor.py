@@ -10,6 +10,7 @@ def transcribe(audio_url):
 	temp_audio = urllib.urlretrieve(audio_url)
 	# Convert Facebook audio attachment's mp4 to Speech-to-Text service 
 	# readable wav format file
+	print "temp: %s"%(temp_audio[0])
 	raw_audio = convert.convert(temp_audio[0])
 	
 	return STT(raw_audio)
