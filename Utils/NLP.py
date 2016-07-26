@@ -93,11 +93,31 @@ def findProperNoun(sentence):
                     return w.string
     return None
 
-def yelp(verbList):
-    yelpVerbs = ['eat', 'drink', 'find']
-    for verb in verbList:
+def ifYelp(sentence):
+    verbs = findVerb(sentence)
+    # If match key verbs
+    yelpVerbs = ['eat', 'drink', 'find', 'display', 'get']
+    for verb in verbs:
         if verb.lower() in yelpVerbs:
             return True
+
+    # If match key nouns
+    noun_phrases = findNounPhrase(sentence)
+    yelpNouns = ['restaurant', 'food', 'drink', 'shop', 'store', 'bar', 'pub']
+    for noun in yelpNouns:
+        if noun in noun_phrases:
+            return True
+
+    # If match question/command structure
+    # "is there" + noun phrase 
+    if "is there" in sentence.string \
+        or "are there" in sentence.string \
+        and noun_phrases != "":
+        return True
+    # noun phrase + "near by"
+    nearby = nearBy(sentence)
+    if noun_phrases != "" and nearby:
+        return True
     return False
 
 def dismissPreviousRequest(sentence):
@@ -116,7 +136,7 @@ def nearBy(sentence):
             res += " ".join([w.string for w in chunk.words if w.type in ['RB', 'PRP', 'IN']])
             res += " "
     res = res.strip()
-    if res in ['near', 'around here', 'around', 'here', 'near here', 'nearby', 'near by', 'close by', 'close']:
+    if res in ['near me', 'around here', 'around', 'here', 'near here', 'nearby', 'near by', 'close by', 'close']:
         return True
     return False
 

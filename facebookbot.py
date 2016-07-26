@@ -1,5 +1,5 @@
 import sys, json
-from Utils import Yelp, FacebookAPI, NLP, MongoHelper
+from Utils import Yelp, FacebookAPI, NLP, MongoHelper, simsimi
 from Speech import processor as STT # Speech to Text
 from flask import Flask, request, g
 
@@ -18,6 +18,11 @@ mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
 users = db.users # Get users collection
 log = db.message_log # Get log collection
+
+simSimi = simsimi.SimSimi(
+        conversation_language='en',
+        conversation_key='cdc24139-6940-4166-9e9d-aae759886a48'
+)
 
 @app.before_request
 def before_request():
@@ -75,7 +80,7 @@ def processIncoming(user_id, message, just_text=False):
             incomingMessage+="."
         s = parsetree(incomingMessage, relations=True, lemmata=True)
         sentence = s[0]
-        verb = NLP.findVerb(sentence)  # list
+        # verb = NLP.findVerb(sentence)  # list
         # print "Verbs: ", verb
         nounPhrase = NLP.findNounPhrase(sentence)
         # print "NPs: ", nounPhrase
@@ -104,7 +109,7 @@ def processIncoming(user_id, message, just_text=False):
 
                     except Exception, e:
                         print e
-                        location = {'type':'text','data': location_lookup}
+                        location = {'type':'text','data': nounPhrase}
                         MongoHelper.update_context(users, g.user, 'findFood', 'location', nounPhrase)
                         MongoHelper.add_yelp_location_history(users, g.user, location)
                         FacebookAPI.send_message(app.config['PAT'], user_id, "Sure, give me a few seconds...")
@@ -132,7 +137,7 @@ def processIncoming(user_id, message, just_text=False):
             if NLP.isGoodbye(incomingMessage):
                 return NLP.sayByeTimeZone(g.user)
 
-            if NLP.yelp(verb):                
+            if NLP.ifYelp(sentence):                
                 contextNow = {'context':'findFood', 
                               'location': None,
                               'coordinates': None,
@@ -147,8 +152,13 @@ def processIncoming(user_id, message, just_text=False):
                 else:
                     # follow up to ask for location
                     return message_text
-            else:        
-                return #"I'm sorry I can't process that"
+            else:
+                try:
+                    response = simSimi.getConversation(incomingMessage)
+                    return response['response']
+                except simsimi.SimSimiException as e:
+                    print e
+                    return
 
     elif message['type'] == 'location':
         FacebookAPI.send_message(app.config['PAT'], user_id, "I've received location (%s,%s)"%(message['data'][0],message['data'][1]))
@@ -171,6 +181,7 @@ def processIncoming(user_id, message, just_text=False):
     elif message['type'] == 'audio':
         audio_url = message['data']
         print audio_url
+        # return
         # FacebookAPI.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
         try:
             message_text = STT.transcribe(audio_url)
@@ -179,6 +190,7 @@ def processIncoming(user_id, message, just_text=False):
             FacebookAPI.send_message(app.config['PAT'], user_id, message_text)
             print e
             return
+
         message_text = message_text.decode('utf-8')
         return processIncoming(user_id, message_text, True)
         # return
