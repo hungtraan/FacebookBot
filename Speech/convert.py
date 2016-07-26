@@ -1,4 +1,5 @@
 import subprocess as sp, os
+import traceback
 
 # path to ffmpeg bin
 FFMPEG_PATH = os.environ['FFMPEG_PATH'] if 'FFMPEG_PATH' in os.environ else '/usr/local/bin/ffmpeg'
@@ -16,3 +17,4 @@ def convert(file_path):
     except Exception, e:
         print Exception
         print e
+        traceback.print_exc()
