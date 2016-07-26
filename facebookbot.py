@@ -1,9 +1,9 @@
-import sys
-import json
+import sys, json
 from Utils import Yelp, FacebookAPI, NLP, MongoHelper
 from Speech import processor as STT # Speech to Text
 from flask import Flask, request, g
 
+from geopy.geocoders import Nominatim # https://github.com/geopy/geopy
 from pattern.en import parsetree
 from datetime import datetime, timedelta
 from pymongo import MongoClient
@@ -91,11 +91,24 @@ def processIncoming(user_id, message, just_text=False):
             if context['context'] == 'findFood':
                 if context['location'] == None and context['coordinates'] == None:
                     context['location'] = nounPhrase
-                    location = {'type':'text','data': nounPhrase}
-                    MongoHelper.update_context(users, g.user, 'findFood', 'location', nounPhrase)
-                    MongoHelper.add_yelp_location_history(users, g.user, location)
-                    FacebookAPI.send_message(app.config['PAT'], user_id, "Sure, give me a few seconds...")
-                    result = Yelp.yelp_search(context['terms'], nounPhrase)
+                    try:
+                        geolocator = Nominatim()
+                        location_lookup = geolocator.geocode(nounPhrase)
+                        coords = [location_lookup.latitude, location_lookup.longitude]
+                        location = {'type':'coordinates','data': coords}
+                        MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', coords)
+                        MongoHelper.add_yelp_location_history(users, g.user, location)
+                        FacebookAPI.send_message(app.config['PAT'], user_id, "Looking looking... :D")
+
+                        result = Yelp.yelp_search(context['terms'], None, coords)
+
+                    except Exception, e:
+                        print e
+                        location = {'type':'text','data': location_lookup}
+                        MongoHelper.update_context(users, g.user, 'findFood', 'location', nounPhrase)
+                        MongoHelper.add_yelp_location_history(users, g.user, location)
+                        FacebookAPI.send_message(app.config['PAT'], user_id, "Sure, give me a few seconds...")
+                        result = Yelp.yelp_search(context['terms'], nounPhrase)
                     
                     if result['status'] == 1: # Successful search
                         FacebookAPI.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
