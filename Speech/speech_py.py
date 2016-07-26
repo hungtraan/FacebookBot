@@ -1,6 +1,6 @@
 import credentials
 
-def speech_to_text_ibm_rest(file_path):
+def speech_to_text_ibm_rest(raw_audio):
 	print 'Transcribing...'
 	endpoint = 'https://stream.watsonplatform.net/speech-to-text/api/v1/recognize'
 	auth = "Basic " + base64.b64encode('%s:%s'%(credentials.IBM_STT_USERNAME, credentials.IBM_STT_PASSWORD))
@@ -12,7 +12,7 @@ def speech_to_text_ibm_rest(file_path):
 			   'continuous': 'true',
 			   'smart_formatting': 'true'
 			   }
-	r = requests.post(endpoint, data=file(file_path,'rb').read(),
+	r = requests.post(endpoint, data=raw_audio,
 		headers=headers, params=payload)
 	jsonObject = r.json()
 	if 'results' in jsonObject:
@@ -78,12 +78,19 @@ def speech_to_text_google(speech_file):
     """Transcribe the given audio file.
     Args:
         speech_file: the name of the audio file.
+        Hung's modification: take in binary raw input
     """
     # [START construct_request]
-    with open(speech_file, 'rb') as speech:
+    # Method 1. Take in file input
+    # with open(speech_file, 'rb') as speech: # --> for file
         # Base64 encode the binary audio file for inclusion in the JSON
         # request.
-        speech_content = base64.b64encode(speech.read())
+        # speech_content = base64.b64encode(speech.read())
+
+    # Method 2. Take in raw binary input
+    # Base64 encode the binary audio file for inclusion in the JSON
+    # request.
+    speech_content = base64.b64encode(speech_file)
 
     service = get_speech_service()
     service_request = service.speech().syncrecognize(

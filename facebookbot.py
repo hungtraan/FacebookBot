@@ -157,6 +157,7 @@ def processIncoming(user_id, message, just_text=False):
 
     elif message['type'] == 'audio':
         audio_url = message['data']
+        print audio_url
         # FacebookAPI.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
         try:
             message_text = STT.transcribe(audio_url)

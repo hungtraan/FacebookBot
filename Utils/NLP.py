@@ -101,7 +101,9 @@ def yelp(verbList):
     return False
 
 def dismissPreviousRequest(sentence):
-    stop_signals = ["never mind", "no", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
+    stop_signals = ["never mind", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
+    if sentence.string.lower() == "no":
+        return True
     for signal in stop_signals:
         if signal in sentence.string.lower():
             return True
