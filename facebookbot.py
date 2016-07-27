@@ -155,6 +155,8 @@ def processIncoming(user_id, message, just_text=False):
             else:
                 try:
                     response = simSimi.getConversation(incomingMessage)
+                    while NLP.badWords(response):
+                        response = simSimi.getConversation(incomingMessage)
                     return response['response']
                 except simsimi.SimSimiException as e:
                     print e

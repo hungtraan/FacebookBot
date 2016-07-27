@@ -1,7 +1,6 @@
+import time, string, random
+from bad_words import BAD_WORDS
 from datetime import datetime, timedelta
-import time
-import string
-import random
 from pattern.en import parsetree, singularize
 from pattern.search import search
 
@@ -156,6 +155,12 @@ def fullQuery(sentence):
         query["term"] = m[0].group(1).string
         query["location"] = m[0].group(2).string
     return query
+
+def badWords(string):
+    for word in string.split(" "):
+        if word in BAD_WORDS:
+            return True
+    return False
 
 def openNow(sentence):
     if "open now" in sentence.string or "opens now" in sentence.string:
