@@ -14,3 +14,7 @@ MONGO_URI = "mongodb://facebookbot:makeitcount@ds023105.mlab.com:23105/heroku_nm
 MONGO_DBNAME = 'heroku_nm51m2tt' # Get database
 
 YELP_V3_TOKEN = 'Gad_cfYObQltjlk9VRiiiW0gEeWtbICSvS6qTIOLB7wcRCuFPjCaRCpISKuR1ga_vMRajLhrVPGAcjfeMgBntoXok-L1LSwlFrSvkC7OTzBJdaQOHiTlfKc7YceWV3Yx'
+
+# Bot operation variables:
+PRINT_INCOMING_PAYLOAD = False
+PRINT_INCOMING_MESSAGE = False

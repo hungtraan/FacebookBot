@@ -22,25 +22,37 @@ def send_message(token, user_id, text):
     if r.status_code != requests.codes.ok:
         print r.text
 
-def send_picture(token, user_id, imageUrl, title, subtitle=""):
+def send_picture(token, user_id, imageUrl, title="", subtitle=""):
+    if title != "":
+        data = {"recipient": {"id": user_id},
+                  "message":{
+                      "attachment": {
+                          "type": "template",
+                          "payload": {
+                              "template_type": "generic",
+                              "elements": [{
+                                  "title": title,
+                                  "subtitle": subtitle,
+                                  "image_url": imageUrl
+                              }]
+                          }
+                      }
+                    }
+              }
+    else:
+        data = { "recipient": {"id": user_id},
+                "message":{
+                  "attachment": {
+                      "type": "image",
+                      "payload": {
+                          "url": imageUrl
+                      }
+                  }
+                }
+            }
     r = requests.post("https://graph.facebook.com/v2.6/me/messages",
                       params={"access_token": token},
-                      data=json.dumps({
-                          "recipient": {"id": user_id},
-                          "message":{
-                              "attachment": {
-                                  "type": "template",
-                                  "payload": {
-                                      "template_type": "generic",
-                                      "elements": [{
-                                          "title": title,
-                                          "subtitle": subtitle,
-                                          "image_url": imageUrl
-                                      }]
-                                  }
-                              }
-                            }
-                      }),
+                      data=json.dumps(data),
                       headers={'Content-type': 'application/json'})
     if r.status_code != requests.codes.ok:
         print r.text    

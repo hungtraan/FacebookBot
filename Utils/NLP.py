@@ -11,7 +11,14 @@ def removePunctuation(str):
 def sayHiTimeZone(user):
     user_now = getUserTime(user)
     if recentChat(user):
-        return "Hi again"
+        response = ["Hi again", "Hey hey hey again", "What's up", "Hey there again"]
+        if user_now.hour < 12:
+            response.extend(["Shiny day isn't it", "What a morning", "Morningggg"])
+        elif user_now.hour < 19:
+            response.extend(["How's your afternoon", "Afternoooooon", "What a day"])
+        elif user_now.hour < 4 or user_now.hour > 22:
+            response.extend(["Hmm... you're a night owl", "Long night hah", "You know, science has shown that sleeping early is good for you health", "The night is still young, I'm here"])
+        return oneOf(response)
     if user_now.hour < 12:
         return "Good morning"
     elif user_now.hour < 19:
@@ -26,9 +33,9 @@ def sayByeTimeZone(user):
     byes = ["Goodbye", "Bye then", "See you later", "Bye, have a good day"]
     
     if user_now.hour > 20:
-        return "%s :)"%goodnights[random.randint(0,len(goodnights))]
+        return "%s :)"%oneOf(goodnights)
     else:
-        return "%s :)"%byes[random.randint(0,len(byes))]
+        return "%s :)"%oneOf(byes)
 
 # input: g.user
 def recentChat(user):
@@ -51,15 +58,17 @@ def getUserTime(user):
     return server_now + timedelta(hours=time_diff)
 
 def isGreetings(inp_str):
-    string = inp_str.lower().split(" ")
+    string = removePunctuation(inp_str.lower()).split(" ")
+    if len(string) > 5:
+        return False
     greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
     for word in greetings:
-        if word in string:
+        if word in string[:3]:
             return True
     return False
 
 def isGoodbye(inp_str):
-    string = inp_str.lower().split(" ")
+    string = removePunctuation(inp_str).lower().split(" ")
     byes = ['bye', 'see you']
     for word in byes:
         if word in string:
@@ -155,6 +164,10 @@ def fullQuery(sentence):
         query["term"] = m[0].group(1).string
         query["location"] = m[0].group(2).string
     return query
+
+def oneOf(arr):
+    rand_idx = random.randint(0,len(arr) - 1)
+    return arr[rand_idx]
 
 def badWords(string):
     for word in string.split(" "):

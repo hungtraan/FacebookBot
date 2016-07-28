@@ -1,3 +1,4 @@
+import json
 from bson.objectid import ObjectId
 from FacebookAPI import get_user_fb
 from datetime import datetime
@@ -27,7 +28,8 @@ def create_user_mongo(users, user_id, user_fb):
                     'gender': user_fb['gender'],
                     'timezone':user_fb['timezone'],
                     'contexts':[],
-                    'yelp_location_history':[]}
+                    'yelp_location_history':[],
+                    'yelp_offset': 0}
     users.insert(user_insert)
 
 # Input: Facebook's user_id
@@ -58,8 +60,9 @@ def update_context(users, user, find_by, context_to_update, content):
 def pop_context(users, user):
     users.update({'_id': user['_id']}, {"$pop":{"contexts":1}})
     
-def add_yelp_location_history(users, user, location):
-    users.update({'_id': user['_id']}, {"$addToSet":{"yelp_location_history": location}})
+def add_yelp_location_history(users, user, location, location_name=""):
+    data = {"name": location_name, "data": location}
+    users.update({'_id': user['_id']}, {"$addToSet":{"yelp_location_history": json.dumps(data)}})
     
 def log_message(log, sender, mes_type, message):
     now = datetime.now()

@@ -1,5 +1,5 @@
 import sys, json
-from Utils import Yelp, FacebookAPI, NLP, MongoHelper, simsimi
+from Utils import Yelp, FacebookAPI as FB, NLP, MongoHelper, simsimi
 from Speech import processor as STT # Speech to Text
 from flask import Flask, request, g
 
@@ -18,6 +18,7 @@ mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
 users = db.users # Get users collection
 log = db.message_log # Get log collection
+uncategorized_messages = db.uncategorized_messages
 
 simSimi = simsimi.SimSimi(
         conversation_language='en',
@@ -36,27 +37,37 @@ def handle_verification():
         return request.args.get('hub.challenge', '')
     else:
         print "Verification failed!!!"
-        return 'Error, wrong validation token'
+        return "There's nothing to look here ;)"
 
 
 @app.route('/', methods=['POST'])
 def handle_messages():
     print "Handling Messages"
     payload = request.get_data()
-    
+    if app.config['PRINT_INCOMING_PAYLOAD']:
+        print payload
     # print payload
     for sender, message in messaging_events(payload):
-        # print "Incoming from %s: %s" % (sender, message)
-        # print "User ID: %s" % (sender)
-        response = processIncoming(sender, message)
-        if response is not None:
-            FacebookAPI.send_message(app.config['PAT'], sender, response)
+        if app.config['PRINT_INCOMING_MESSAGE']:
+            print "User ID: %s" % (sender)
+        try:
+            response = processIncoming(sender, message)
+            if response is not None:
+                FB.send_message(app.config['PAT'], sender, response)
+            else:
+                FB.send_message(app.config['PAT'], sender, "*sratch my head* :(")
+                FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
+        except Exception, e:
+            print e
+            FB.send_message(app.config['PAT'], sender, "Sorry I've got a little bit sick. BRB :(")
+            FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
     return "ok"
 
 def processIncoming(user_id, message, just_text=False):
     if not MongoHelper.user_exists(users, user_id): # First time user
         g.user = MongoHelper.get_user_mongo(users, user_id)
         response = "%s %s, nice to meet you"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
+        FB.send_picture(app.config['PAT'], user_id, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
         # Some functionality introduction here
         return response
     else:
@@ -80,10 +91,7 @@ def processIncoming(user_id, message, just_text=False):
             incomingMessage+="."
         s = parsetree(incomingMessage, relations=True, lemmata=True)
         sentence = s[0]
-        # verb = NLP.findVerb(sentence)  # list
-        # print "Verbs: ", verb
         nounPhrase = NLP.findNounPhrase(sentence)
-        # print "NPs: ", nounPhrase
 
         if NLP.dismissPreviousRequest(sentence):
             MongoHelper.pop_context(users, g.user)
@@ -94,102 +102,54 @@ def processIncoming(user_id, message, just_text=False):
 
             # Find food functionality
             if context['context'] == 'findFood':
-                if context['location'] == None and context['coordinates'] == None:
-                    context['location'] = nounPhrase
-                    try:
-                        geolocator = Nominatim()
-                        location_lookup = geolocator.geocode(nounPhrase)
-                        coords = [location_lookup.latitude, location_lookup.longitude]
-                        location = {'type':'coordinates','data': coords}
-                        MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', coords)
-                        MongoHelper.add_yelp_location_history(users, g.user, location)
-                        FacebookAPI.send_message(app.config['PAT'], user_id, "Looking looking... :D")
-
-                        result = Yelp.yelp_search(context['terms'], None, coords)
-
-                    except Exception, e:
-                        print e
-                        location = {'type':'text','data': nounPhrase}
-                        MongoHelper.update_context(users, g.user, 'findFood', 'location', nounPhrase)
-                        MongoHelper.add_yelp_location_history(users, g.user, location)
-                        FacebookAPI.send_message(app.config['PAT'], user_id, "Sure, give me a few seconds...")
-                        result = Yelp.yelp_search(context['terms'], nounPhrase)
-                    
-                    if result['status'] == 1: # Successful search
-                        FacebookAPI.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
-                        FacebookAPI.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
-                        FacebookAPI.send_quick_replies_yelp(app.config['PAT'], user_id)
-                    else:
-                        MongoHelper.pop_context(users, g.user)
-                        return "Sorry I can't find any places for that"
-                        # Follow up
-                    return
-                else:
-                    MongoHelper.pop_context(users, g.user)
-                    return
+                handleFindFood(user_id, context, sentence, nounPhrase, message, incomingMessage, 'receive_location_text')
                 
         else:
             if NLP.isGreetings(incomingMessage):
                 greeting = "%s %s"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
-                FacebookAPI.send_message(app.config['PAT'], user_id, greeting)
+                FB.send_message(app.config['PAT'], user_id, greeting)
                 return "How can I help you?"
 
             if NLP.isGoodbye(incomingMessage):
                 return NLP.sayByeTimeZone(g.user)
 
             if NLP.ifYelp(sentence):                
-                contextNow = {'context':'findFood', 
-                              'location': None,
-                              'coordinates': None,
-                              'terms': nounPhrase
-                              }
-                MongoHelper.add_context(users, g.user, contextNow)
-                return "Can you send me your whereabouts?"
-                if NLP.nearBy(s[0]):
-                    # https://fbnewsroomus.files.wordpress.com/2015/06/messenger-location-sharing1-copy.png?w=600&h=568
-                    MongoHelper.add_context(users, g.user, contextNow)
-                    return "Can you send me your whereabouts?"
-                else:
-                    # follow up to ask for location
-                    return message_text
+                handleFindFood(user_id, None, sentence, nounPhrase, message, incomingMessage, 'receive_request')
             else:
+                # Log this message for categorization later
+                MongoHelper.log_message(uncategorized_messages, user_id, "text", incomingMessage)
                 try:
-                    response = simSimi.getConversation(incomingMessage)
+                    response = simSimi.getConversation(incomingMessage)['response']
+                    bad_times = 0
                     while NLP.badWords(response):
-                        response = simSimi.getConversation(incomingMessage)
-                    return response['response']
+                        bad_times += 1
+                        print response
+                        response = simSimi.getConversation(incomingMessage)['response']
+                        if bad_times == 5:
+                            return "Hmm... I can't think of anything witty enough to respond to that :P"
+                    return response
                 except simsimi.SimSimiException as e:
                     print e
                     return
 
     elif message['type'] == 'location':
-        FacebookAPI.send_message(app.config['PAT'], user_id, "I've received location (%s,%s)"%(message['data'][0],message['data'][1]))
+        FB.send_message(app.config['PAT'], user_id, "I've received location (%s,%s)"%(message['data'][0],message['data'][1]))
 
         if contextData is not None and len(contextData) > 0:
             context = contextData[-1]
             if context['context'] == 'findFood':
-                location = {'type':'coordinates','data': message['data']}
-                MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', message['data'])
-                MongoHelper.add_yelp_location_history(users, g.user, location)
-                FacebookAPI.send_message(app.config['PAT'], user_id, "Looking looking... :D")
-
-                result = Yelp.yelp_search(context['terms'], None, message['data'])
-                if result['status'] == 1:
-                    FacebookAPI.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
-                    FacebookAPI.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
-                    FacebookAPI.send_quick_replies_yelp(app.config['PAT'], user_id)
-                return
+                handleFindFood(user_id, context, sentence, nounPhrase, message,incomingMessage, 'receive_location_gps')
 
     elif message['type'] == 'audio':
         audio_url = message['data']
         print audio_url
         # return
-        # FacebookAPI.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
+        # FB.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
         try:
             message_text = STT.transcribe(audio_url)
         except Exception, e:
             message_text = "Sorry I can't process that now"
-            FacebookAPI.send_message(app.config['PAT'], user_id, message_text)
+            FB.send_message(app.config['PAT'], user_id, message_text)
             print e
             return
 
@@ -207,9 +167,9 @@ def processIncoming(user_id, message, just_text=False):
             result = Yelp.yelp_search(context['terms'], context['location'], context['coordinates'], 5, offset)
 
             if result['status'] == 1: # Successful search
-                FacebookAPI.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
-                FacebookAPI.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
-                FacebookAPI.send_quick_replies_yelp(app.config['PAT'], user_id)
+                FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
+                FB.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
+                FB.send_quick_replies_yelp(app.config['PAT'], user_id)
             else:
                 MongoHelper.pop_context(users, g.user)
                 MongoHelper.reset_yelp_offset(users, g.user)
@@ -219,7 +179,7 @@ def processIncoming(user_id, message, just_text=False):
         elif cmd == 'yelp-ok':
             MongoHelper.pop_context(users, g.user)
             MongoHelper.reset_yelp_offset(users, g.user)
-            FacebookAPI.send_message(app.config['PAT'], user_id, "Glad I can help :)")
+            FB.send_message(app.config['PAT'], user_id, "Glad I can help :)")
 
     else:
         MongoHelper.pop_context(users, g.user)
@@ -273,6 +233,67 @@ def get_user_from_message(payload):
 def get_most_recent_locations_yelp(limit=3):
     locations = g.user['yelp_location_history']
     return locations[-5:] if len(locations) > limit else locations
+
+def handleFindFood(user_id, context, sentence, nounPhrase, message, incomingMessage, stage):
+    if stage == 'receive_request':
+        contextNow = {'context':'findFood', 
+                      'location': None,
+                      'coordinates': None,
+                      'terms': nounPhrase
+                      }
+        MongoHelper.add_context(users, g.user, contextNow)
+        return "Can you send me your whereabouts?"
+        if NLP.nearBy(sentence):
+            # https://fbnewsroomus.files.wordpress.com/2015/06/messenger-location-sharing1-copy.png?w=600&h=568
+            MongoHelper.add_context(users, g.user, contextNow)
+            return "Can you send me your whereabouts?"
+
+    elif stage == 'receive_location_gps':
+        location = {'type':'coordinates','data': message['data']}
+        MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', message['data'])
+        MongoHelper.add_yelp_location_history(users, g.user, location)
+        FB.send_message(app.config['PAT'], user_id, "Looking looking... :D")
+
+        result = Yelp.yelp_search(context['terms'], None, message['data'])
+        if result['status'] == 1:
+            FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
+            FB.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
+            FB.send_quick_replies_yelp(app.config['PAT'], user_id)
+        return
+
+    elif stage == 'receive_location_text':
+        if context['location'] == None and context['coordinates'] == None:
+            context['location'] = nounPhrase
+            try:
+                geolocator = Nominatim()
+                location_lookup = geolocator.geocode(nounPhrase)
+                coords = [location_lookup.latitude, location_lookup.longitude]
+                location = {'type':'coordinates','data': coords}
+                MongoHelper.update_context(users, g.user, 'findFood', 'coordinates', coords)
+                MongoHelper.add_yelp_location_history(users, g.user, location, nounPhrase)
+                FB.send_message(app.config['PAT'], user_id, "Looking looking... :D")
+
+                result = Yelp.yelp_search(context['terms'], None, coords)
+
+            except Exception, e:
+                print e
+                location = {'type':'text','data': nounPhrase}
+                MongoHelper.update_context(users, g.user, 'findFood', 'location', nounPhrase)
+                FB.send_message(app.config['PAT'], user_id, NLP.oneOf(["Sure, give me a few seconds... B-)", "Scanning the world... :D", "Zoom zoom zoom...", "Going into the Food Cerebro... B-)", "Believe me, I'm a foodie, not an engineer..."]))
+                result = Yelp.yelp_search(context['terms'], nounPhrase)
+            
+            if result['status'] == 1: # Successful search
+                FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
+                FB.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
+                FB.send_quick_replies_yelp(app.config['PAT'], user_id)
+            else:
+                MongoHelper.pop_context(users, g.user)
+                return "Sorry I can't find any places for that :("
+                # Follow up
+            return
+        else:
+            MongoHelper.pop_context(users, g.user)
+            return
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
