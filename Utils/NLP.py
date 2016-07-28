@@ -58,7 +58,7 @@ def getUserTime(user):
     return server_now + timedelta(hours=time_diff)
 
 def isGreetings(inp_str):
-    string = removePunctuation(inp_str.lower()).split(" ")
+    string = inp_str.replace(".","").lower().split(" ")
     if len(string) > 5:
         return False
     greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
@@ -68,7 +68,7 @@ def isGreetings(inp_str):
     return False
 
 def isGoodbye(inp_str):
-    string = removePunctuation(inp_str).lower().split(" ")
+    string = inp_str.replace(".","").lower().split(" ")
     byes = ['bye', 'see you']
     for word in byes:
         if word in string:
