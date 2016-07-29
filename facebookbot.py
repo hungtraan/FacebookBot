@@ -310,7 +310,8 @@ def handle_find_food(user_id, context, sentence, nounPhrase, message, incomingMe
                       }
         MongoHelper.add_context(users, g.user, contextNow)
         FB.send_message(app.config['PAT'], user_id, "Can you send me your location? :D")
-        FB.send_quick_replies_yelp_suggest_location(app.config['PAT'], user_id, get_recent_locations_yelp())
+        if len(g.user['yelp_location_history']) > 0:
+            FB.send_quick_replies_yelp_suggest_location(app.config['PAT'], user_id, get_recent_locations_yelp())
         return 'pseudo'
         # return "Can you send me your location? :D"
         if NLP.nearBy(sentence):
