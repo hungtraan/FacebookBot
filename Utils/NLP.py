@@ -101,7 +101,7 @@ def findProperNoun(sentence):
                     return w.string
     return None
 
-def ifYelp(sentence):
+def isYelp(sentence):
     verbs = findVerb(sentence)
     # If match key verbs
     yelpVerbs = ['eat', 'drink', 'find', 'display', 'get']
@@ -168,6 +168,12 @@ def fullQuery(sentence):
 def oneOf(arr):
     rand_idx = random.randint(0,len(arr) - 1)
     return arr[rand_idx]
+
+def randOneIn(chance):
+    i = random.randint(1,chance)
+    if i == chance:
+        return True
+    return False
 
 def badWords(string):
     for word in string.split(" "):

@@ -1,6 +1,8 @@
 from yelp.client import Client
 from yelp.oauth1_authenticator import Oauth1Authenticator
+from YelpAPIv3 import Client3
 from math import radians, cos, sin, asin, sqrt
+from datetime import datetime
 import config
 from bs4 import BeautifulSoup
 import requests
@@ -12,7 +14,9 @@ auth = Oauth1Authenticator(
     token=config.TOKEN,
     token_secret=config.TOKEN_SECRET
 )
+
 yelpClient = Client(auth)
+yelpClient3 = Client3(config.YELP_V3_TOKEN)
 
 def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
@@ -33,13 +37,13 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     try:
         if coordinates is not None:
             response = yelpClient.search_by_coordinates(coordinates[0], coordinates[1], **params)
-            print response
         elif location != '':
             response = yelpClient.search(location, **params)
     except Exception, e:
         print e
         return returnData
-            
+    
+    # v2      
     if len(response.businesses):
         returnData['status'] = 1
         for biz in response.businesses:
@@ -57,21 +61,6 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
         returnData['status'] = 0
 
     return returnData
-
-class yelpClient_v3:
-    def __init__(self, token):
-        self.endpoint = 'https://api.yelp.com/v3/businesses/search'
-        self.headers = {"Authorization": "Bearer {}".format(token)}
-        
-    def search(self, **params):
-        r = requests.get(self.endpoint, headers=self.headers, params=params)
-        return r.json()
-
-    def search_by_coordinates(self, params):
-        r = requests.get(self.endpoint, headers=self.headers, params=params)
-        return r.json()        
-
-yelpClient3 = yelpClient_v3(config.YELP_V3_TOKEN)
 
 def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
@@ -106,25 +95,34 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
     if len(response['businesses']):
         returnData['status'] = 1
         for biz in response['businesses']:
+            details = yelpClient3.get_details(biz['id'])
             business = {}
+            business['id'] = biz['id']
             business['name'] = biz['name']
             business['price'] = biz['price']
-            if 'hours' in biz:
-                business['is_open_now'] = biz['hours']['is_open_now']
+            # business['hours'] = details['hours'][0]['open']
+            business['is_open_now'] = details['hours'][0]['is_open_now']
+            business['hours_today'] = hours_today(details['hours'][0]['open'])
             business['address'] = biz['location']['address1']
             if coordinates is not None:
-                business['distance'] = calculate_distance(coordinates, [biz['location'].coordinate.latitude, biz['location'].coordinate.longitude])
+                business['distance'] = calculate_distance(coordinates, [biz['coordinates']['latitude'], biz['coordinates']['longitude']])
             business['rating'] = str(biz['rating']) +u"\u2605 (" + str(biz['review_count']) + " reviews)"
             business['url'] = biz['url']
             business['image_url'] = biz['image_url']
             business['categories'] = ', '.join([b['title'] for b in biz['categories']])
             returnData['businesses'].append(business)
-    else:
-        returnData['status'] = 0
-
+    
     return returnData
 
+def hours_today(hours):
+    todayWkday = datetime.weekday(datetime.now())
+    start = hours[todayWkday]['start']
+    end = hours[todayWkday]['end']
+    return "%s:%s - %s:%s"%(start[:2], start[2:], end[:2], end[2:])
 
+def get_reviews(business_id, limit=3):
+    return yelpClient3.get_reviews(business_id)['reviews']
+    
 def calculate_distance(coord1, coord2):
     """
     Calculate the great circle distance between two points 

@@ -57,22 +57,83 @@ def send_picture(token, user_id, imageUrl, title="", subtitle=""):
     if r.status_code != requests.codes.ok:
         print r.text    
 
-def send_quick_replies_yelp(token, user_id):
+def send_quick_replies_yelp_search(token, user_id):
     # options = [Object {name:value, url:value}, Object {name:value, url:value}]
     quickRepliesOptions = [
         {"content_type":"text",
          "title": "Get more suggestions",
-         "payload": 'yelp-more'
+         "payload": 'yelp-more-yes'
         },
         {"content_type":"text",
          "title": "That's good for me",
-         "payload": 'yelp-ok'
+         "payload": 'yelp-more-no'
         }
     ]
     data = json.dumps({
             "recipient":{ "id": user_id },
             "message":{
-                "text":"Do you want to find more results?",
+                "text":"Do you want to find more results? :D",
+                "quick_replies": quickRepliesOptions
+                }
+            })
+    data = data.encode('utf-8')
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+        params={"access_token": token},
+        data=data,
+        headers={'Content-type':'application/json'})
+
+    if r.status_code != requests.codes.ok:
+        print r.text
+
+def send_quick_replies_yelp_save_location(token, user_id, location):
+    # options = [Object {name:value, url:value}, Object {name:value, url:value}]
+    quickRepliesOptions = [
+        {"content_type":"text",
+         "title": "Sure",
+         "payload": 'yelp-save-location-yes'
+        },
+        {"content_type":"text",
+         "title": "I'll rename it",
+         "payload": 'yelp-save-location-rename'
+        },
+        {"content_type":"text",
+         "title": "No, thank you",
+         "payload": 'yelp-save-location-no'
+        }
+    ]
+    data = json.dumps({
+            "recipient":{ "id": user_id },
+            "message":{
+                "text":"Do you want me to save this location as \"%s\" for the future? :D"%(location),
+                "quick_replies": quickRepliesOptions
+                }
+            })
+    data = data.encode('utf-8')
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+        params={"access_token": token},
+        data=data,
+        headers={'Content-type':'application/json'})
+
+    if r.status_code != requests.codes.ok:
+        print r.text
+
+def send_quick_replies_yelp_suggest_location(token, user_id, locations):
+    quickRepliesOptions = []
+    i = 0
+    for location in locations:
+        location_name = location['name'][:17] + "..." if len(location['name']) > 20 else location['name']
+
+        obj = {"content_type":"text",
+         "title": location_name,
+         "payload": 'yelp-cached-location-%s'%(i)
+        }
+        quickRepliesOptions.append(obj)
+        i += 1
+    
+    data = json.dumps({
+            "recipient":{ "id": user_id },
+            "message":{
+                "text":"Or choose one of the saved locations :D",
                 "quick_replies": quickRepliesOptions
                 }
             })

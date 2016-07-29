@@ -53,17 +53,17 @@ def increment_yelp_offset(users, user, offset):
 def reset_yelp_offset(users, user):
     users.update({'_id': user['_id']},{"$set":{"yelp_offset": 0}})
 
-def update_context(users, user, find_by, context_to_update, content):
-    users.update({'_id': user['_id'], "contexts.context": find_by},
-        { "$set": { "contexts.$.%s"%(context_to_update) : content } })
+def update_context(users, user, which_context, content_to_update, content):
+    users.update({'_id': user['_id'], "contexts.context": which_context},
+        { "$set": { "contexts.$.%s"%(content_to_update) : content } })
     
 def pop_context(users, user):
     users.update({'_id': user['_id']}, {"$pop":{"contexts":1}})
     
 def add_yelp_location_history(users, user, location, location_name=""):
-    data = {"name": location_name, "data": location}
-    users.update({'_id': user['_id']}, {"$addToSet":{"yelp_location_history": json.dumps(data)}})
-    
+    data = {"name": location_name, "coordinates": location}
+    users.update({'_id': user['_id']}, {"$addToSet":{"yelp_location_history": data}})
+
 def log_message(log, sender, mes_type, message):
     now = datetime.now()
     timeStr = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
