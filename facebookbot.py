@@ -1,5 +1,6 @@
 import sys, json
-from Utils import Yelp, FacebookAPI as FB, NLP, MongoHelper, simsimi
+from Utils import FacebookAPI as FB, NLP, MongoHelper, simsimi
+from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
 from flask import Flask, request, g
 
@@ -68,7 +69,7 @@ def handle_messages():
 def processIncoming(user_id, message, just_text=False):
     if not MongoHelper.user_exists(users, user_id): # First time user
         g.user = MongoHelper.get_user_mongo(users, user_id)
-        response = "%s %s, nice to meet you"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
+        response = "%s %s, nice to meet you :)"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
         FB.send_picture(app.config['PAT'], user_id, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
         # Some functionality introduction here
         return response
@@ -112,7 +113,7 @@ def processIncoming(user_id, message, just_text=False):
 
         else:
             if NLP.isGreetings(incomingMessage):
-                greeting = "%s %s"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
+                greeting = "%s %s :D"%(NLP.sayHiTimeZone(g.user), g.user['first_name'])
                 FB.send_message(app.config['PAT'], user_id, greeting)
                 return "How can I help you?"
 
@@ -175,7 +176,7 @@ def processIncoming(user_id, message, just_text=False):
         if cmd == 'yelp-more-yes':
             offset = g.user['yelp_offset'] + 5
             MongoHelper.increment_yelp_offset(users, g.user, 5) # actually update
-            result = Yelp.yelp_search(context['terms'], context['location'], context['coordinates'], 5, offset)
+            result = yelp_search(context['terms'], context['location'], context['coordinates'], 5, offset)
 
             if result['status'] == 1: # Successful search
                 FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
@@ -328,7 +329,7 @@ def handle_find_food(user_id, context, sentence, nounPhrase, message, incomingMe
         MongoHelper.update_context(users, g.user, 'find-food', 'coordinates', location)
         FB.send_message(app.config['PAT'], user_id, "Looking looking... :D")
 
-        result = Yelp.yelp_search(context['terms'], None, location)
+        result = yelp_search(context['terms'], None, location)
         if result['status'] == 1:
             FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))
             FB.send_yelp_results(app.config['PAT'], user_id, result['businesses'])
@@ -349,13 +350,13 @@ def handle_find_food(user_id, context, sentence, nounPhrase, message, incomingMe
                 MongoHelper.update_context(users, g.user, 'find-food', 'coordinates', coords)
                 MongoHelper.update_context(users, g.user, 'find-food', 'location', nounPhrase)
                 FB.send_message(app.config['PAT'], user_id, "Looking looking... :D")
-                result = Yelp.yelp_search(context['terms'], None, coords)
+                result = yelp_search(context['terms'], None, coords)
 
             except Exception, e:
                 print e
                 MongoHelper.update_context(users, g.user, 'find-food', 'location', nounPhrase)
                 FB.send_message(app.config['PAT'], user_id, NLP.oneOf(["Sure, give me a few seconds... B-)", "Scanning the world... :D", "Zoom zoom zoom...", "Going into the Food Cerebro... B-)", "Believe me, I'm a foodie, not an engineer..."]))
-                result = Yelp.yelp_search(context['terms'], nounPhrase)
+                result = yelp_search(context['terms'], nounPhrase)
             
             if result['status'] == 1: # Successful search
                 FB.send_message(app.config['PAT'], user_id, "Okay, I've found %s places:"%(len(result['businesses'])))

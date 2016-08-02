@@ -150,13 +150,15 @@ def send_yelp_results(token, user_id, businesses):
     options = []
 
     for business in businesses:
-        subtitle = business['address'] 
+        subtitle = business['price'] + " - " + business['address'] 
         if 'distance' in business:
             subtitle += " (" + str(business['distance']) + " mi.)"
+        if 'is_open_now' in business:
+            subtitle += "\n" + "Open now" if business['is_open_now'] else "\nClosed" 
+            subtitle += " (Hours: %s)"%(business['hours_today'])
         subtitle += "\n" + business['categories']
-
         obj = {
-                "title": business['name'] + " - " + business['rating'],
+                "title": business['name'] + " - " + business['rating'] ,
                 "image_url": business['image_url'],
                 "subtitle": subtitle,
                 "buttons":[

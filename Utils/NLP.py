@@ -18,6 +18,8 @@ def sayHiTimeZone(user):
             response.extend(["How's your afternoon", "Afternoooooon", "What a day"])
         elif user_now.hour < 4 or user_now.hour > 22:
             response.extend(["Hmm... you're a night owl", "Long night hah", "You know, science has shown that sleeping early is good for you health", "The night is still young, I'm here"])
+        else:
+            response.extend(["Good evening", "What's rolling for dinner"])
         return oneOf(response)
     if user_now.hour < 12:
         return "Good morning"
