@@ -2,7 +2,7 @@ import sys, json
 from Utils import FacebookAPI as FB, NLP, MongoHelper, simsimi
 from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
-from flask import Flask, request, g
+from flask import Flask, request, g, render_template, jsonify
 
 from geopy.geocoders import Nominatim # https://github.com/geopy/geopy
 from pattern.en import parsetree
@@ -29,6 +29,14 @@ simSimi = simsimi.SimSimi(
 @app.before_request
 def before_request():
     g.user = None
+
+@app.route('/tos', methods=['GET'])
+def tos():
+    return render_template('tos.html')
+
+@app.route('/memo', methods=['GET'])
+def memo():
+    return render_template('memo.html')
 
 @app.route('/', methods=['GET'])
 def handle_verification():
