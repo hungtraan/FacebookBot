@@ -127,19 +127,20 @@ def handle_messages():
     payload = request.get_data()
     if app.config['PRINT_INCOMING_PAYLOAD']:
         print payload
-    
+    token = app.config['PAT']
     for sender, message in messaging_events(payload):
         if app.config['PRINT_INCOMING_MESSAGE']:
             print "User ID: %s\nMessage:%s" % (sender, message)
         try:
-            FB.show_typing(app.config['PAT'], sender)
+            FB.show_typing(token, sender)
             response = processIncoming(sender, message)
+            FB.show_typing(token, sender, 'typing_off')
             if response is not None and response != 'pseudo':
-                FB.send_message(app.config['PAT'], sender, response)
+                FB.send_message(token, sender, response)
             elif response != 'pseudo':
-                FB.send_message(app.config['PAT'], sender, "*scratch my head* :(")
+                FB.send_message(token, sender, "*scratch my head* :(")
                 if NLP.randOneIn(7):
-                    FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
+                    FB.send_picture(token, sender, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
         except Exception, e:
             print e
             FB.send_message(app.config['PAT'], sender, "Sorry I've got a little bit sick. BRB :(")
