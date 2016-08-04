@@ -1,82 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    
-    <title>Material Design Bootstrap</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="/static/assets/css/bootstrap.min.css">
-    <link href="/static/assets/css/mdb.css" rel="stylesheet">
-    <link href="/static/assets/css/style.css" rel="stylesheet">
-    <script type="text/javascript" src="/static/assets/js/memo.js"></script>
-        
-</head>
-
-<body>
-    <!-- Facebook JS SDK -->
-    <div id="fb-root"></div>
-    <script>
-    window.fbAsyncInit = function () {
-        FB.init({ appId: '247812048924510', 
-            cookie: true, xfbml: true, oauth: true });
-
-        // *** here is my code ***
-        if (typeof facebookInit == 'function') {
-            facebookInit();
-        }
-    };
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/all.js#xfbml=1&version=v2.7&appId=247812048924510";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));</script>
-    <header>
-    <!--/ Facebook JS SDK -->
-
-    <!--Navbar-->
-    <nav class="navbar navbar-dark primary-color-dark">
-
-        <!-- Collapse button-->
-        <button class="navbar-toggler hidden-sm-up" type="button" data-toggle="collapse" data-target="#collapseEx">
-            <i class="fa fa-bars"></i>
-        </button>
-        
-        <div class="container">
-
-            <!--Collapse content-->
-            <div class="collapse navbar-toggleable-xs" id="collapseEx">
-                <!--Navbar Brand-->
-                <a class="navbar-brand" href="/memo">Traanslation Bot</a>
-                <!--Links-->
-                <ul class="nav navbar-nav">
-                    <!-- <li class="nav-item active">
-                        <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Features</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Pricing</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">About</a>
-                    </li> -->
-                </ul>
-            </div>
-            <!--/.Collapse content-->
-       
-        </div>
-
-    </nav>
-    <!--/.Navbar-->
-    </header>
-    
+{% extends "layout.html" %}
+{% block body %}
     <main>
         <!--Main layout-->
         <div class="container">
@@ -84,13 +7,20 @@
            <!--Page heading-->
             <div class="row">
                 <div class="col-md-8">
-                    <h1 class="h1-responsive">My memos
+                    <h1 class="h1-responsive">
+                    {% if user_name %}{{ user_name }}'s
+                    {% else %}My
+                    {% endif %} memos
                         <small class="text-muted"></small>
                     </h1>
                 </div>
                 <div class="col-md-4">
                     <div class="social-section">
-                        <!-- <div class="btn btn-fb waves-effect waves-light pull-right fb-login-button" data-max-rows="1" data-size="large" data-show-faces="true" data-auto-logout-link="true"><i class="fa fa-facebook left"></i> Login with Facebook</div> -->
+                        {% if not session.logged_in %}
+                        <a href="/login" class="btn btn-fb waves-effect waves-light pull-right fb-login-button" data-max-rows="1" data-size="large" data-show-faces="true" data-auto-logout-link="true"><i class="fa fa-facebook left"></i> Login with Facebook</a>
+                        {% else %}
+                        <a href="/logout" class="btn btn-fb waves-effect waves-light pull-right fb-login-button" data-max-rows="1" data-size="large" data-show-faces="true" data-auto-logout-link="true"><i class="fa fa-facebook left"></i> Log out</a>
+                        {% endif %}
                         <div class="fb-login-button pull-right" data-max-rows="1" data-size="large" data-auto-logout-link="true"></div>
                     </div>
                 </div>
@@ -316,7 +246,4 @@
 
     <!-- MDB core JavaScript -->
     <script type="text/javascript" src="/static/assets/js/mdb.min.js"></script>
-    
-</body>
-
-</html>
+{% endblock %}

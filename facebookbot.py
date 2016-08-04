@@ -16,6 +16,7 @@ application.config.from_pyfile('config.py', silent=True)
 
 app = application
 
+app.secret_key = 'super secret key'
 mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
 users = db.users # Get users collection
@@ -37,12 +38,18 @@ facebook = oauth.remote_app('facebook',
     authorize_url='https://www.facebook.com/dialog/oauth',
     consumer_key=app.config['FACEBOOK_APP_ID'],
     consumer_secret=app.config['FACEBOOK_APP_SECRET'],
-    request_token_params={'scope': 'email'}
+    request_token_params={'scope': 'email,public_profile'}
 )
 
 @app.before_request
 def before_request():
     g.user = None
+    # g.web_user = None
+    # if 'logged_in' in session and session['logged_in']:
+    #     data = facebook.get('/me').data
+    #     if 'id' in data and 'name' in data:
+    #         user_id = data['id']
+            # g.web_user = MongoHelper.get_user_mongo(users, user_id)
 
 @app.route('/tos', methods=['GET'])
 def tos():
@@ -50,34 +57,58 @@ def tos():
 
 @app.route('/login')
 def login():
-    return facebook.authorize(callback=url_for('oauth_authorized',
+    print url_for('oauth_authorized')
+    return facebook.authorize(callback=url_for('oauth_authorized', _external=True,
         next=request.args.get('next') or request.referrer or None))
+
+@app.route("/logout")
+def logout():
+    session.pop('logged_in', None)
+    session.pop('fb_token', None)
+    return redirect(url_for('memo'))
 
 @app.route('/oauth-authorized')
 @facebook.authorized_handler
 def oauth_authorized(resp):
-    next_url = request.args.get('next') or url_for('index')
+    next_url = request.args.get('next') or url_for('memo')
     if resp is None:
         flash(u'You denied the request to sign in.')
         return redirect(next_url)
 
+    session['logged_in'] = True
     session['fb_token'] = (
-        resp['oauth_token'],
-        resp['oauth_token_secret']
+        resp['access_token'],
+        ''
     )
-    session['fb_user'] = resp['screen_name']
+    data = facebook.get('/me').data
+    if 'name' in data:
+        user_name = data['name']
 
-    flash('You were signed in as %s' % resp['screen_name'])
+    flash('You are signed in as %s'%(user_name))
     return redirect(next_url)
 
 
 @facebook.tokengetter
-def get_twitter_token(token=None):
+def get_fb_token(token=None):
     return session.get('fb_token')
+
+@app.route('/hi', methods=['GET'])
+def hi():
+    return render_template('hi.html')
 
 @app.route('/memo', methods=['GET'])
 def memo():
-    return render_template('memo.html')
+    if 'logged_in' in session and session['logged_in']:
+        data = facebook.get('/me').data
+        if 'id' in data and 'name' in data:
+            user_id = data['id']
+            user_name = data['name']
+    else:
+        user_name = None
+    # if not g.web_user:
+    #     return redirect(url_for('hi'))
+    # user_name = g.web_user['first_name']
+    return render_template('memo.html', user_name=user_name)
 
 @app.route('/', methods=['GET'])
 def handle_verification():
@@ -96,11 +127,12 @@ def handle_messages():
     payload = request.get_data()
     if app.config['PRINT_INCOMING_PAYLOAD']:
         print payload
-    # print payload
+    
     for sender, message in messaging_events(payload):
         if app.config['PRINT_INCOMING_MESSAGE']:
             print "User ID: %s\nMessage:%s" % (sender, message)
         try:
+            FB.show_typing(app.config['PAT'], sender)
             response = processIncoming(sender, message)
             if response is not None and response != 'pseudo':
                 FB.send_message(app.config['PAT'], sender, response)
