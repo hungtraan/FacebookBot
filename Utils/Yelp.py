@@ -99,7 +99,7 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
             business = {}
             business['id'] = biz['id']
             business['name'] = biz['name']
-            business['price'] = biz['price']
+            business['price'] = biz['price'] if 'prize' in biz else ""
             # business['hours'] = details['hours'][0]['open']
             business['is_open_now'] = details['hours'][0]['is_open_now']
             business['hours_today'] = hours_today(details['hours'][0]['open'])
