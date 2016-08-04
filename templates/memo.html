@@ -20,6 +20,15 @@
     <!-- Facebook JS SDK -->
     <div id="fb-root"></div>
     <script>
+    window.fbAsyncInit = function () {
+        FB.init({ appId: '247812048924510', 
+            cookie: true, xfbml: true, oauth: true });
+
+        // *** here is my code ***
+        if (typeof facebookInit == 'function') {
+            facebookInit();
+        }
+    };
     (function(d, s, id) {
         var js, fjs = d.getElementsByTagName(s)[0];
         if (d.getElementById(id)) return;

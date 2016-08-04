@@ -1,6 +1,7 @@
 autobahn==0.14.1
 beautifulsoup4==4.4.1
 Flask==0.10.1
+Flask-OAuth==0.12
 geopy==1.11.0
 google-api-python-client==1.5.1
 gunicorn==19.6.0

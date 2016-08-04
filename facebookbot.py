@@ -2,7 +2,8 @@ import sys, json
 from Utils import FacebookAPI as FB, NLP, MongoHelper, simsimi
 from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
-from flask import Flask, request, g, render_template, jsonify
+from flask import Flask, request, g, session, render_template, redirect, url_for, jsonify, flash
+from flask_oauth import OAuth
 
 from geopy.geocoders import Nominatim # https://github.com/geopy/geopy
 from pattern.en import parsetree
@@ -23,7 +24,20 @@ uncategorized_messages = db.uncategorized_messages
 
 simSimi = simsimi.SimSimi(
         conversation_language='en',
-        conversation_key='cdc24139-6940-4166-9e9d-aae759886a48'
+        conversation_key=app.config['SIMSIMI_KEY']
+)
+
+
+# https://pythonhosted.org/Flask-OAuth/
+oauth = OAuth()
+facebook = oauth.remote_app('facebook',
+    base_url='https://graph.facebook.com/',
+    request_token_url=None,
+    access_token_url='/oauth/access_token',
+    authorize_url='https://www.facebook.com/dialog/oauth',
+    consumer_key=app.config['FACEBOOK_APP_ID'],
+    consumer_secret=app.config['FACEBOOK_APP_SECRET'],
+    request_token_params={'scope': 'email'}
 )
 
 @app.before_request
@@ -33,6 +47,33 @@ def before_request():
 @app.route('/tos', methods=['GET'])
 def tos():
     return render_template('tos.html')
+
+@app.route('/login')
+def login():
+    return facebook.authorize(callback=url_for('oauth_authorized',
+        next=request.args.get('next') or request.referrer or None))
+
+@app.route('/oauth-authorized')
+@facebook.authorized_handler
+def oauth_authorized(resp):
+    next_url = request.args.get('next') or url_for('index')
+    if resp is None:
+        flash(u'You denied the request to sign in.')
+        return redirect(next_url)
+
+    session['fb_token'] = (
+        resp['oauth_token'],
+        resp['oauth_token_secret']
+    )
+    session['fb_user'] = resp['screen_name']
+
+    flash('You were signed in as %s' % resp['screen_name'])
+    return redirect(next_url)
+
+
+@facebook.tokengetter
+def get_twitter_token(token=None):
+    return session.get('fb_token')
 
 @app.route('/memo', methods=['GET'])
 def memo():
@@ -64,7 +105,7 @@ def handle_messages():
             if response is not None and response != 'pseudo':
                 FB.send_message(app.config['PAT'], sender, response)
             elif response != 'pseudo':
-                FB.send_message(app.config['PAT'], sender, "*sratch my head* :(")
+                FB.send_message(app.config['PAT'], sender, "*scratch my head* :(")
                 if NLP.randOneIn(7):
                     FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
         except Exception, e:
