@@ -9,12 +9,12 @@ def get_user_fb(token, user_id):
     user = json.loads(r.content)
     return user
 
-def show_typing(token, user_id):
+def show_typing(token, user_id, action='typing_on'):
   r = requests.post("https://graph.facebook.com/v2.6/me/messages",
                       params={"access_token": token},
                       data=json.dumps({
                           "recipient": {"id": user_id},
-                          "sender_action":"typing_on"
+                          "sender_action": action
                       }),
                       headers={'Content-type': 'application/json'})
   if r.status_code != requests.codes.ok:
