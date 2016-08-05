@@ -12,7 +12,7 @@ def sayHiTimeZone(user):
     user_now = getUserTime(user)
     if recentChat(user):
         response = ["Hi again", "Hey hey hey again", "What's up", "Hey there again"]
-        if user_now.hour < 12:
+        if user_now.hour > 5 and user_now.hour < 12:
             response.extend(["Shiny day isn't it", "What a morning", "Morningggg"])
         elif user_now.hour < 19:
             response.extend(["How's your afternoon", "Afternoooooon", "What a day"])
@@ -21,9 +21,9 @@ def sayHiTimeZone(user):
         else:
             response.extend(["Good evening", "What's rolling for dinner"])
         return oneOf(response)
-    if user_now.hour < 12:
+    if user_now.hour > 5 and user_now.hour <= 12:
         return "Good morning"
-    elif user_now.hour < 19:
+    elif user_now.hour > 12 and user_now.hour < 19:
         return "Good afternoon"
     else:
         return "Good evening"
@@ -193,4 +193,3 @@ def hasWifi(sentence):
     if "wifi" in string:
         return True
     return False
-

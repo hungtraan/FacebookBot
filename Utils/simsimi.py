@@ -6,7 +6,7 @@ class SimSimiException(Exception):
 class SimSimi(object):
 
 	def __init__(self, *args, **kwargs):
-		self.conversation_request_url = kwargs.get('conversation_request_url','http://sandbox.api.simsimi.com/request.p')
+		self.conversation_request_url = kwargs.get('conversation_request_url','http://api.simsimi.com/request.p')
 		self.conversation_key = kwargs.get('conversation_key','')
 		self.conversation_language = kwargs.get('conversation_language', 'en')
 		self.conversation_filter = kwargs.get('conversation_filter','0.0')
@@ -32,7 +32,7 @@ class SimSimi(object):
 
 # simSimi = SimSimi(
 #         conversation_language='en',
-#         conversation_key='cdc24139-6940-4166-9e9d-aae759886a48'
+#         conversation_key='e7e391ba-a2e1-42e2-9f62-4a3f4e27284b'
 # )
 
 # while True:

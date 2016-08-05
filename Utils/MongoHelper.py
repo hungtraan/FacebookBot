@@ -13,12 +13,12 @@ def user_exists(users, user_id):
     user = users.find_one({'user_id': user_id})
     if user is None:
         user_fb = get_user_fb(PAT, user_id)
-        create_user_mongo(users, user_id, user_fb)
+        create_user(users, user_id, user_fb)
         return False
     return True
 
 # Has to use user_id since user has not existed
-def create_user_mongo(users, user_id, user_fb):
+def create_user(users, user_id, user_fb):
     timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
     user_insert = {'user_id': user_id, 
                     'created_at': timestamp,
@@ -69,3 +69,31 @@ def log_message(log, sender, mes_type, message):
     timeStr = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
     log.insert_one({"sender":sender, "type": mes_type, 
         "message":message, "timestamp": timeStr })
+
+def get_memo_user(memos, user_id):
+    user = memos.find_one({'user_id': user_id})
+    if user is None:
+        user = create_memo_user(memos, user_id)
+    return user
+
+def create_memo_user(memos, user_id):
+    timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
+    user_insert = {'user_id': user_id, 
+                    'created_at': timestamp,
+                    'memos':[],
+                    }
+    memos.insert_one(user_insert)
+    return memos.find_one({'user_id': user_id})
+
+def add_memo(memos, user, text, title="Title"):
+    timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
+    
+    memo_content = {'created_at': timestamp,
+            'title': title,
+            'edited': 0,
+            'content': text,
+            }
+    memos.update({"_id": user['_id']}, { "$addToSet": {'memos': memo_content } })
+
+def get_memos_from_user(memos, user_id):
+    return memos.find_one({'user_id': user_id}, { 'memos': 1 })

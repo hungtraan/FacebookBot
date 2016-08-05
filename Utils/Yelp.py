@@ -78,7 +78,7 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
     returnData = {}
     returnData['businesses'] = []
     returnData['status'] = 0
-    
+    print coordinates
     try:
         if coordinates is not None:
             params['latitude'] = coordinates[0]
@@ -101,8 +101,10 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
             business['name'] = biz['name']
             business['price'] = biz['price'] if 'prize' in biz else ""
             # business['hours'] = details['hours'][0]['open']
-            business['is_open_now'] = details['hours'][0]['is_open_now']
-            business['hours_today'] = hours_today(details['hours'][0]['open'])
+            if 'hours' in details and len(details['hours']) > 0:
+                business['is_open_now'] = details['hours'][0]['is_open_now']
+                if len(details['hours'][0]['open']) > 0:
+                    business['hours_today'] = hours_today(details['hours'][0]['open'])
             business['address'] = biz['location']['address1']
             if coordinates is not None:
                 business['distance'] = calculate_distance(coordinates, [biz['coordinates']['latitude'], biz['coordinates']['longitude']])
@@ -116,6 +118,8 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
 
 def hours_today(hours):
     todayWkday = datetime.weekday(datetime.now())
+    if todayWkday >= len(hours):
+        return ""
     start = hours[todayWkday]['start']
     end = hours[todayWkday]['end']
     return "%s:%s - %s:%s"%(start[:2], start[2:], end[:2], end[2:])

@@ -166,6 +166,7 @@ def send_yelp_results(token, user_id, businesses):
             subtitle += " (" + str(business['distance']) + " mi.)"
         if 'is_open_now' in business:
             subtitle += "\n" + "Open now" if business['is_open_now'] else "\nClosed" 
+        if 'hours_today' in business:
             subtitle += " (Hours: %s)"%(business['hours_today'])
         subtitle += "\n" + business['categories']
         obj = {

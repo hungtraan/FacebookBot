@@ -22,6 +22,7 @@ db = mongo[app.config['MONGO_DBNAME']] # Get database
 users = db.users # Get users collection
 log = db.message_log # Get log collection
 uncategorized_messages = db.uncategorized_messages
+memos = db.memos
 
 simSimi = simsimi.SimSimi(
         conversation_language='en',
@@ -96,19 +97,20 @@ def get_fb_token(token=None):
 def hi():
     return render_template('hi.html')
 
-@app.route('/memo', methods=['GET'])
-def memo():
+@app.route('/memo/<user_id>', methods=['GET'])
+def memo(user_id):
     if 'logged_in' in session and session['logged_in']:
         data = facebook.get('/me').data
         if 'id' in data and 'name' in data:
-            user_id = data['id']
+            # user_id = data['id']
             user_name = data['name']
     else:
         user_name = None
     # if not g.web_user:
     #     return redirect(url_for('hi'))
     # user_name = g.web_user['first_name']
-    return render_template('memo.html', user_name=user_name)
+    memo_data = MongoHelper.get_memos_from_user(memos, user_id)['memos']
+    return render_template('memo.html', user_name=user_name, memo_data=memo_data)
 
 @app.route('/', methods=['GET'])
 def handle_verification():
@@ -144,6 +146,7 @@ def handle_messages():
         except Exception, e:
             print e
             FB.send_message(app.config['PAT'], sender, "Sorry I've got a little bit sick. BRB :(")
+            MongoHelper.pop_context(users, g.user)
             if NLP.randOneIn(7):
                 FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
     return "ok"
@@ -204,6 +207,7 @@ def processIncoming(user_id, message, just_text=False):
 
             if NLP.isYelp(sentence):                
                 return handle_find_food(user_id, None, sentence, nounPhrase, message, incomingMessage, 'receive_request')
+
             else:
                 # Log this message for categorization later
                 MongoHelper.log_message(uncategorized_messages, user_id, "text", incomingMessage)
@@ -240,6 +244,7 @@ def processIncoming(user_id, message, just_text=False):
         # FB.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
         try:
             message_text = STT.transcribe(audio_url)
+            print message_text
         except Exception, e:
             message_text = "Sorry I can't process that now"
             FB.send_message(app.config['PAT'], user_id, message_text)
@@ -247,6 +252,8 @@ def processIncoming(user_id, message, just_text=False):
             return
 
         message_text = message_text.decode('utf-8')
+        if message_text.split(" ")[0] == "transcribe":
+            return handle_transcription(user_id, message_text)
         return processIncoming(user_id, message_text, True)
         # return
 
@@ -455,6 +462,12 @@ def handle_find_food(user_id, context, sentence, nounPhrase, message, incomingMe
 
 def handle_yelp_rename(user_id, user, context, name):
     MongoHelper.add_yelp_location_history(users, user, context['coordinates'], name)
+
+def handle_transcription(user_id, message_text):
+
+    user = MongoHelper.get_memo_user(memos, user_id)
+    MongoHelper.add_memo(memos, user, message_text)
+    return "I've saved it for you :D"
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
