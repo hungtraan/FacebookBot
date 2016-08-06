@@ -204,3 +204,29 @@ def send_yelp_results(token, user_id, businesses):
                       headers={'Content-type': 'application/json'})
     if r.status_code != requests.codes.ok:
         print r.text
+
+def send_url(token, user_id, text, url):
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+                      params={"access_token": token},
+                      data=json.dumps({
+                            "recipient": {"id": user_id},
+                            "message":{
+                                "attachment":{
+                                    "type":"template",
+                                    "payload":{
+                                        "template_type":"button",
+                                        "text": text,
+                                        "buttons":[
+                                            {
+                                            "type":"web_url",
+                                            "url": url,
+                                            "title":"View Memo"
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                      }),
+                      headers={'Content-type': 'application/json'})
+    if r.status_code != requests.codes.ok:
+        print r.text

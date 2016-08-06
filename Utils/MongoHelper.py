@@ -36,7 +36,9 @@ def create_user(users, user_id, user_fb):
 def get_user_mongo(users, user_id):
     return users.find_one({'user_id': user_id})
 
-def update_last_seen(users, user, timestamp):
+def update_last_seen(users, user):
+    now = datetime.now()
+    timestamp = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
     users.update({"user_id": user['user_id']},{"$set":{"last_seen": timestamp}})
 
 def get_contexts(users, user):

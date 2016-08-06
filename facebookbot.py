@@ -1,4 +1,4 @@
-import sys, json
+import sys, json, os
 from Utils import FacebookAPI as FB, NLP, MongoHelper, simsimi
 from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
@@ -28,7 +28,6 @@ simSimi = simsimi.SimSimi(
         conversation_language='en',
         conversation_key=app.config['SIMSIMI_KEY']
 )
-
 
 # https://pythonhosted.org/Flask-OAuth/
 oauth = OAuth()
@@ -151,6 +150,8 @@ def handle_messages():
                 FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
     return "ok"
 
+temp_audio_url = ""
+
 def processIncoming(user_id, message, just_text=False):
     if not MongoHelper.user_exists(users, user_id): # First time user
         g.user = MongoHelper.get_user_mongo(users, user_id)
@@ -161,16 +162,15 @@ def processIncoming(user_id, message, just_text=False):
     else:
         g.user = MongoHelper.get_user_mongo(users, user_id)
 
-    now = datetime.now()
-    timestamp = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
     last_seen = datetime.strptime(g.user['last_seen'],"%Y-%m-%d %H:%M:%S")
-    recent5min = now - timedelta(minutes=5)
+    recent5min = datetime.now() - timedelta(minutes=5)
 
     if last_seen < recent5min:
-        MongoHelper.update_last_seen(users, g.user, timestamp)
+        MongoHelper.update_last_seen(users, g.user)
 
     contextData = g.user['contexts']
     
+    # Text message type
     if just_text or message['type'] == 'text':
         message_text = message if just_text else message['data']
         incomingMessage = message_text # NLP.removePunctuation(message_text)
@@ -227,36 +227,63 @@ def processIncoming(user_id, message, just_text=False):
                     print e
                     return
 
+    # Location message type
     elif message['type'] == 'location':
         FB.send_message(app.config['PAT'], user_id, "I've received location (%s,%s) (y)"%(message['data'][0],message['data'][1]))
 
         if contextData is not None and len(contextData) > 0:
             context = contextData[-1]
-            if context['context'] == 'find-food':
+            if 'context' in context and context['context'] == 'find-food':
                 return handle_find_food(user_id, context, None, None, message, None, 'receive_location_gps')
         else:
             return 'pseudo'
 
+    # Audio message type
     elif message['type'] == 'audio':
         audio_url = message['data']
-        print audio_url
-        # return
-        # FB.send_message(app.config['PAT'], user_id, "Gotcha :D Transcribing...")
+
+        # Handle Facebook bug when receiving long audio
+        # The bug: The app keeps receiving the same POST request
+        # This acts as a rescue exit signal
+        global temp_audio_url 
+        if audio_url == temp_audio_url:
+            return 'pseudo'
+        temp_audio_url = audio_url
+
+        # Get text from audio
         try:
             message_text = STT.transcribe(audio_url)
+            # if 'DISPLAY_STT_RESULT' in os.environ and os.environ['DISPLAY_STT_RESULT'] != 0:
             print message_text
         except Exception, e:
-            message_text = "Sorry I can't process that now"
+            message_text = "Sorry I can't process that now :("
             FB.send_message(app.config['PAT'], user_id, message_text)
             print e
             return
 
+        # Begin processing audio command
         message_text = message_text.decode('utf-8')
-        if message_text.split(" ")[0] == "transcribe":
-            return handle_transcription(user_id, message_text)
-        return processIncoming(user_id, message_text, True)
-        # return
 
+        if NLP.dismissPreviousRequest(message_text, 'string'):
+            MongoHelper.pop_context(users, g.user)
+            return "Sure, no problem"
+        
+        if contextData is not None and len(contextData) > 0:
+            context = contextData[-1]
+            if context == 'create-memo':
+                return handle_transcription(user_id, message_text)
+    
+        if NLP.isMemoCommandOnly(message_text):
+            MongoHelper.add_context(users, g.user, 'create-memo')
+            return "I'm listening, go ahead :D"
+
+        elif NLP.isMemo(message_text):
+            content = NLP.get_memo_content(message_text)
+            return handle_transcription(user_id, content)
+
+        return processIncoming(user_id, message_text, True)
+
+    # Quick Reply message type
     elif message['type'] == 'quick_reply':
         context = contextData[-1]
         cmd = message['data']
@@ -464,10 +491,13 @@ def handle_yelp_rename(user_id, user, context, name):
     MongoHelper.add_yelp_location_history(users, user, context['coordinates'], name)
 
 def handle_transcription(user_id, message_text):
-
     user = MongoHelper.get_memo_user(memos, user_id)
-    MongoHelper.add_memo(memos, user, message_text)
-    return "I've saved it for you :D"
+    if len(message_text.split(" ")) > 10:
+        MongoHelper.add_memo(memos, user, message_text)
+        url = url_for("memo", user_id=user_id, _external=True)
+        FB.send_url(app.config['PAT'], user_id, "I've saved it for you :D", url)
+    MongoHelper.pop_context(users, g.user)
+    return 'pseudo'
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:

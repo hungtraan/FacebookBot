@@ -1,11 +1,55 @@
-import time, string, random
+import time, string, random, re
 from bad_words import BAD_WORDS
 from datetime import datetime, timedelta
 from pattern.en import parsetree, singularize
 from pattern.search import search
 
-def removePunctuation(str):
-    return str.translate(None, string.punctuation)
+def removePunctuation(inp_str):
+    return inp_str.translate(None, string.punctuation)
+
+def isGreetings(inp_str):
+    string = inp_str.replace(".","").lower().split(" ")
+    if len(string) > 5:
+        return False
+    greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
+    for word in greetings:
+        if word in string[:3]:
+            return True
+    return False
+
+def isGoodbye(inp_str):
+    string = inp_str.replace(".","").lower().split(" ")
+    byes = ['bye', 'see you']
+    for word in byes:
+        if word in string:
+            return True
+    return False
+
+def isMemoCommandOnly(inp_str):
+    s = inp_str.split(" ")
+    if s[0] in ['memorize','memorized'] and len(s) < 6:
+        return True
+    regEx = "(memorize)( this)?([\w\d ]{0,15}(?<!except)for me)?"
+    command = re.search(regEx, inp_str)
+    if command != None:
+        remaining = inp_str.replace(command.group(0), "").strip()
+        if remaining == "":
+            return True
+    return False
+
+def isMemo(inp_str):
+    regEx = "memorize( this)?([\w\d ]{0,15}(?<!except)for me)?"
+    command = re.search(regEx, inp_str)
+    if command != None:
+        return True
+    return False
+
+def get_memo_content(inp_str):
+    regEx = "memorize( this)?([\w\d ]{0,15}(?<!except)for me)?"
+    command = re.search(regEx, inp_str)
+    if command == None:
+        return inp_str
+    return inp_str.replace(command.group(0), "").strip() # strip trailing space
 
 # input: g.user, i.e. mongodb user object
 def sayHiTimeZone(user):
@@ -59,24 +103,7 @@ def getUserTime(user):
     server_now = datetime.now()
     return server_now + timedelta(hours=time_diff)
 
-def isGreetings(inp_str):
-    string = inp_str.replace(".","").lower().split(" ")
-    if len(string) > 5:
-        return False
-    greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
-    for word in greetings:
-        if word in string[:3]:
-            return True
-    return False
-
-def isGoodbye(inp_str):
-    string = inp_str.replace(".","").lower().split(" ")
-    byes = ['bye', 'see you']
-    for word in byes:
-        if word in string:
-            return True
-    return False
-
+# input: pattern.en sentence object
 def findVerb(sentence):
     result = []
     for chunk in sentence.chunks:
@@ -86,7 +113,7 @@ def findVerb(sentence):
         # print chunk.type, [(w.string, w.type) for w in chunk.words ]
     return result
 
-
+# input: pattern.en sentence object
 def findNounPhrase(sentence):
     res = ""
     for chunk in sentence.chunks:
@@ -95,6 +122,7 @@ def findNounPhrase(sentence):
             res += " "
     return res
 
+# input: pattern.en sentence object
 def findProperNoun(sentence):
     for chunk in sentence.chunks:
         if chunk.type == 'NP':
@@ -103,6 +131,7 @@ def findProperNoun(sentence):
                     return w.string
     return None
 
+# input: pattern.en sentence object
 def isYelp(sentence):
     verbs = findVerb(sentence)
     # If match key verbs
@@ -130,15 +159,19 @@ def isYelp(sentence):
         return True
     return False
 
-def dismissPreviousRequest(sentence):
+# input: pattern.en sentence object, unless specified otherwise in inp_type
+def dismissPreviousRequest(string, inp_type='sentence'):
+    if inp_type == 'sentence':
+        string = string.string.lower()
     stop_signals = ["never mind", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
-    if sentence.string.lower() == "no":
+    if string == "no":
         return True
     for signal in stop_signals:
-        if signal in sentence.string.lower():
+        if signal in string:
             return True
     return False
 
+# input: pattern.en sentence object
 def nearBy(sentence):
     res = ""
     for chunk in sentence.chunks:
@@ -150,6 +183,7 @@ def nearBy(sentence):
         return True
     return False
 
+# input: pattern.en sentence object
 def fullQuery(sentence):
     new_str = ""
     for word in sentence.words:
@@ -166,6 +200,7 @@ def fullQuery(sentence):
         query["term"] = m[0].group(1).string
         query["location"] = m[0].group(2).string
     return query
+
 
 def oneOf(arr):
     rand_idx = random.randint(0,len(arr) - 1)
