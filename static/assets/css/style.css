@@ -22,3 +22,8 @@ main .card {
 .btn-fb:hover {
     background-color: #4264aa;
 }
+
+p.card-text{
+    height: 3em;
+    overflow: hidden;
+}

@@ -1,4 +1,3 @@
-import json
 from bson.objectid import ObjectId
 from FacebookAPI import get_user_fb
 from datetime import datetime
@@ -29,17 +28,39 @@ def create_user(users, user_id, user_fb):
                     'timezone':user_fb['timezone'],
                     'contexts':[],
                     'yelp_location_history':[],
-                    'yelp_offset': 0}
+                    'yelp_offset': 0,
+                    'first_time_using': {
+                        'yelp': 1,
+                        'audio': 1,
+                        'gps': 1
+                    }
+                }
     users.insert(user_insert)
 
 # Input: Facebook's user_id
 def get_user_mongo(users, user_id):
     return users.find_one({'user_id': user_id})
 
+# ======= Generic update =========
+def set_attribute(users, user, attribute, content, upsert=False):
+    users.update({'_id': user['_id']},{"$set":{ attribute: content}}, upsert=upsert)
+# ======= END Generic update =========
+
 def update_last_seen(users, user):
     now = datetime.now()
     timestamp = datetime.strftime(now,"%Y-%m-%d %H:%M:%S")
     users.update({"user_id": user['user_id']},{"$set":{"last_seen": timestamp}})
+
+def update_first_time(users, user, first_time_name):
+    users.update({'_id': user['_id']},{"$set":{"first_time_using." + first_time_name: 0}})
+
+def first_time_using(users, user, first_time_name):
+    tried = users.find_one({'_id': user['_id']},{"first_time_using." + first_time_name: 1})['first_time_using']
+    if tried:
+        return False
+    else:
+        update_first_time(users, user, first_time_name)
+        return True
 
 def get_contexts(users, user):
     user = users.find_one({user['_id']})['contexts']
@@ -55,8 +76,8 @@ def increment_yelp_offset(users, user, offset):
 def reset_yelp_offset(users, user):
     users.update({'_id': user['_id']},{"$set":{"yelp_offset": 0}})
 
-def update_context(users, user, which_context, content_to_update, content):
-    users.update({'_id': user['_id'], "contexts.context": which_context},
+def update_context(users, user, context_name, content_to_update, content):
+    users.update({'_id': user['_id'], "contexts.context": context_name},
         { "$set": { "contexts.$.%s"%(content_to_update) : content } })
     
 def pop_context(users, user):
@@ -72,30 +93,20 @@ def log_message(log, sender, mes_type, message):
     log.insert_one({"sender":sender, "type": mes_type, 
         "message":message, "timestamp": timeStr })
 
-def get_memo_user(memos, user_id):
-    user = memos.find_one({'user_id': user_id})
-    if user is None:
-        user = create_memo_user(memos, user_id)
-    return user
-
-def create_memo_user(memos, user_id):
+def add_memo(memos, user, text, title=None):
     timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
-    user_insert = {'user_id': user_id, 
-                    'created_at': timestamp,
-                    'memos':[],
-                    }
-    memos.insert_one(user_insert)
-    return memos.find_one({'user_id': user_id})
-
-def add_memo(memos, user, text, title="Title"):
-    timestamp = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S")
-    
-    memo_content = {'created_at': timestamp,
+    if title == None:
+        title = datetime.strftime(datetime.now(),"%b %d, %Y %H:%M")
+    memo = {
+            'user_object_id': user['_id'],
+            'user_id': user['user_id'],
+            'created_at': timestamp,
             'title': title,
             'edited': 0,
             'content': text,
             }
-    memos.update({"_id": user['_id']}, { "$addToSet": {'memos': memo_content } })
+    memos.insert(memo)
 
 def get_memos_from_user(memos, user_id):
-    return memos.find_one({'user_id': user_id}, { 'memos': 1 })
+    memo = memos.find( {"$query":{'user_id': user_id}, "$orderby": { "created_at" : -1 }})
+    return memo

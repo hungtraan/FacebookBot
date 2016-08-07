@@ -96,26 +96,33 @@ def send_quick_replies_yelp_search(token, user_id):
     if r.status_code != requests.codes.ok:
         print r.text
 
-def send_quick_replies_yelp_save_location(token, user_id, location):
+def send_quick_replies_yelp_save_location(token, user_id, location=None):
     # options = [Object {name:value, url:value}, Object {name:value, url:value}]
     quickRepliesOptions = [
         {"content_type":"text",
          "title": "Sure",
          "payload": 'yelp-save-location-yes'
-        },
-        {"content_type":"text",
+        }]
+    if location != None: # Place this here to make sure this option comes second
+        rename = {"content_type":"text",
          "title": "I'll rename it",
          "payload": 'yelp-save-location-rename'
-        },
-        {"content_type":"text",
+        }
+        quickRepliesOptions.append(rename)
+    no = {"content_type":"text",
          "title": "No, thank you",
          "payload": 'yelp-save-location-no'
         }
-    ]
+    quickRepliesOptions.append(no)
+    
+    if location == None:
+        message = "Do you want me to save this location?"
+    else:
+        message = "Do you want me to save this location as \"%s\" for the future? :D"%(location)
     data = json.dumps({
             "recipient":{ "id": user_id },
             "message":{
-                "text":"Do you want me to save this location as \"%s\" for the future? :D"%(location),
+                "text": message,
                 "quick_replies": quickRepliesOptions
                 }
             })
@@ -161,13 +168,16 @@ def send_yelp_results(token, user_id, businesses):
     options = []
 
     for business in businesses:
-        subtitle = business['price'] + " - " + business['address'] 
+        subtitle = ""
+        if 'price' in business and business['price'] != "":
+            subtitle += business['price'] + " - "
+        subtitle += business['address'] 
         if 'distance' in business:
             subtitle += " (" + str(business['distance']) + " mi.)"
         if 'is_open_now' in business:
-            subtitle += "\n" + "Open now" if business['is_open_now'] else "\nClosed" 
-        if 'hours_today' in business:
-            subtitle += " (Hours: %s)"%(business['hours_today'])
+            subtitle += "\n" + "Open now" if business['is_open_now'] else "\n" 
+        if 'hours_today' in business and len(business['hours_today']) > 0:
+            subtitle += " - Hours today: %s"%(business['hours_today'])
         subtitle += "\n" + business['categories']
         obj = {
                 "title": business['name'] + " - " + business['rating'] ,
@@ -205,7 +215,7 @@ def send_yelp_results(token, user_id, businesses):
     if r.status_code != requests.codes.ok:
         print r.text
 
-def send_url(token, user_id, text, url):
+def send_url(token, user_id, text, title, url):
     r = requests.post("https://graph.facebook.com/v2.6/me/messages",
                       params={"access_token": token},
                       data=json.dumps({
@@ -220,7 +230,7 @@ def send_url(token, user_id, text, url):
                                             {
                                             "type":"web_url",
                                             "url": url,
-                                            "title":"View Memo"
+                                            "title": title
                                             }
                                         ]
                                     }
@@ -230,3 +240,50 @@ def send_url(token, user_id, text, url):
                       headers={'Content-type': 'application/json'})
     if r.status_code != requests.codes.ok:
         print r.text
+
+def send_intro_screenshots(token, user_id, feature):
+
+    if feature == 'yelp':
+        location_text = {
+            "title": "Tell me the name of the location",
+            "image_url": "https://monosnap.com/file/1zh6Wt1C7Bt2sqOP7wly8cXZQbmLAT.png",
+            "subtitle": "Find a restaurant/shop for you",
+        }
+        location_gps = {
+            "title": "Send me the GPS information",
+            "image_url": "https://monosnap.com/file/SFQWVXrRSEof5DuhCohUcOqgd3yv28.png",
+            "subtitle": "Find a restaurant/shop for you",
+        }
+        location_save = {
+            "title": "I can also save your favorite locations",
+            "image_url": "https://monosnap.com/file/oCUr8Cz7hwijK3EcuisdBAAFvJd79a.png",
+            "subtitle": "Find a restaurant/shop for you",
+        }
+        options = [location_text, location_gps, location_save]
+
+    elif feature == 'memo':
+        memo1 = {
+            "title": "Keeping your memos",
+            "image_url": "https://monosnap.com/file/aUQoBEpgmy6aPET9S6bb3j6CS8eLep.png",
+            "subtitle": "Say \"memorize\", followed by your memo in the same or separate message",
+        }
+        options = [memo1]
+
+    r = requests.post("https://graph.facebook.com/v2.6/me/messages",
+          params={"access_token": token},
+          data=json.dumps({
+                "recipient": {"id": user_id},
+                "message":{
+                    "attachment":{
+                        "type":"template",
+                        "payload":{
+                            "template_type":"generic",
+                            "elements": options
+                        }
+                    }
+                }
+          }),
+          headers={'Content-type': 'application/json'})
+    if r.status_code != requests.codes.ok:
+        print r.text
+

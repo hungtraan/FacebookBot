@@ -38,7 +38,7 @@
 
                         <!--Card image-->
                         <div class="view overlay hm-white-slight">
-                            <img src="http://mdbootstrap.com/images/regular/city/img%20(18).jpg" class="img-fluid" alt="">
+                            <!-- <img src="http://mdbootstrap.com/images/regular/city/img%20(18).jpg" class="img-fluid" alt=""> -->
                             <a href="#!">
                                 <div class="mask"></div>
                             </a>
@@ -49,8 +49,10 @@
                         <div class="card-block">
                             <!--Title-->
                             <h4 class="card-title">{{ memo['title'] }}</h4>
+                            <p class="card-title">{{ memo['created_at'] }}</p>
+
                             <!--Text-->
-                            <p class="card-text">{{ memo['content'][:140] }}</p>
+                            <p class="card-text">{{ memo['content'][:140] }}...</p>
                             <div class="read-more">
                                 <a href="#!" class="btn btn-primary" data-toggle="modal" data-target="#myModal">Read more</a>
                             </div>
@@ -112,10 +114,12 @@
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
-                    <h4 class="modal-title" id="myModalLabel">Modal title</h4>
+                    <h4 class="modal-title" id="myModalLabel">My Memo</h4>
+                    <p>16:28 - August 6, 2016</p>
                 </div>
                 <!--Body-->
                 <div class="modal-body">
+                    So this is my first recording for the memo let's see how it turns out
                     Maecenas semper vehicula venenatis. Ut hendrerit condimentum justo eu ultrices. Pellentesque semper dolor eget eros varius imperdiet. Fusce eu sem sit amet arcu lacinia accumsan ac et urna. Quisque nec dolor vel massa lacinia dignissim. Quisque ut libero porta, fringilla nisi et, lobortis lectus. Maecenas quis lobortis tortor. Sed rhoncus metus rutrum est tempus, non egestas orci vehicula. Phasellus tincidunt, tellus vitae lacinia feugiat, dolor arcu scelerisque ex, id condimentum libero risus et erat. Morbi maximus lobortis purus sed efficitur. Fusce vitae diam semper, malesuada nulla et, placerat nulla.
                 </div>
                 <!--Footer-->
@@ -137,19 +141,4 @@
         </div>
         <!--/.Copyright-->        
     </footer>
-    <!--/.Footer-->
-   
-    <!-- SCRIPTS -->
-
-    <!-- JQuery -->
-    <script type="text/javascript" src="/static/assets/js/jquery-2.2.3.min.js"></script>
-
-    <!-- Bootstrap tooltips -->
-    <script type="text/javascript" src="/static/assets/js/tether.min.js"></script>
-
-    <!-- Bootstrap core JavaScript -->
-    <script type="text/javascript" src="/static/assets/js/bootstrap.min.js"></script>
-
-    <!-- MDB core JavaScript -->
-    <script type="text/javascript" src="/static/assets/js/mdb.min.js"></script>
 {% endblock %}

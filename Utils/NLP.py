@@ -4,11 +4,19 @@ from datetime import datetime, timedelta
 from pattern.en import parsetree, singularize
 from pattern.search import search
 
+# Random response sets
+no_response = ["*scratch my head* :(", "How do I respond to that... :O", "I can be not-so-smart from time to time... :(", "Err... you know I'm not human, right? :O"]
+error = ["Sorry I've got a little bit sick. BRB :(", "Oops... 404 My Witty Mind Not Found :O", "Oops... My brain went MIA in the cloud :(", "Hmm... How should I respond to that..."]
+looking_replies = ["Sure, give me a few seconds... B-)", "Scanning the world... :D", "Zoom zoom zoom...", "Going into the Food Cerebro... B-)", "Believe me, I'm a foodie, not an engineer..."]
+# END random response sets
+
+
+
 def removePunctuation(inp_str):
     return inp_str.translate(None, string.punctuation)
 
 def isGreetings(inp_str):
-    string = inp_str.replace(".","").lower().split(" ")
+    string = inp_str.lower().split(" ")
     if len(string) > 5:
         return False
     greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
@@ -18,7 +26,7 @@ def isGreetings(inp_str):
     return False
 
 def isGoodbye(inp_str):
-    string = inp_str.replace(".","").lower().split(" ")
+    string = inp_str.lower().split(" ")
     byes = ['bye', 'see you']
     for word in byes:
         if word in string:
@@ -26,7 +34,7 @@ def isGoodbye(inp_str):
     return False
 
 def isMemoCommandOnly(inp_str):
-    s = inp_str.split(" ")
+    s = inp_str.lower().split(" ")
     if s[0] in ['memorize','memorized'] and len(s) < 6:
         return True
     regEx = "(memorize)( this)?([\w\d ]{0,15}(?<!except)for me)?"
@@ -39,14 +47,14 @@ def isMemoCommandOnly(inp_str):
 
 def isMemo(inp_str):
     regEx = "memorize( this)?([\w\d ]{0,15}(?<!except)for me)?"
-    command = re.search(regEx, inp_str)
+    command = re.search(regEx, inp_str.lower())
     if command != None:
         return True
     return False
 
 def get_memo_content(inp_str):
     regEx = "memorize( this)?([\w\d ]{0,15}(?<!except)for me)?"
-    command = re.search(regEx, inp_str)
+    command = re.search(regEx, inp_str.lower())
     if command == None:
         return inp_str
     return inp_str.replace(command.group(0), "").strip() # strip trailing space

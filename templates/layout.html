@@ -15,7 +15,7 @@
 <body>
     <header>
       {% for message in get_flashed_messages() %}
-        <div class=flash>{{ message }}</div>
+        <div class="flash">{{ message }}</div>
       {% endfor %}
         <!--Navbar-->
         <nav class="navbar navbar-dark primary-color-dark">
@@ -40,6 +40,15 @@
     </header>
 
     {% block body %}{% endblock %}
-    
+    <script type="text/javascript" src="/static/assets/js/jquery-2.2.3.min.js"></script>
+
+    <!-- Bootstrap tooltips -->
+    <script type="text/javascript" src="/static/assets/js/tether.min.js"></script>
+
+    <!-- Bootstrap core JavaScript -->
+    <script type="text/javascript" src="/static/assets/js/bootstrap.min.js"></script>
+
+    <!-- MDB core JavaScript -->
+    <script type="text/javascript" src="/static/assets/js/mdb.min.js"></script>
 </body>
   
