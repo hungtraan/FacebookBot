@@ -113,7 +113,6 @@ def memo(user_id):
     #     return redirect(url_for('hi'))
     # user_name = g.web_user['first_name']
     memo_data = Mongo.get_memos_from_user(memos, user_id)
-    print memo_data
     return render_template('memo.html', user_name=user_name, memo_data=memo_data)
 
 @app.route('/', methods=['GET'])

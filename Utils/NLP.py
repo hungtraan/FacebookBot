@@ -118,7 +118,6 @@ def findVerb(sentence):
         if chunk.type in ['VP']:
             strings = [w.string for w in chunk.words if w.type in ['VB','VBP']]
             result.extend(strings)
-        # print chunk.type, [(w.string, w.type) for w in chunk.words ]
     return result
 
 # input: pattern.en sentence object
@@ -222,12 +221,12 @@ def randOneIn(chance):
 
 def badWords(string):
     for word in string.split(" "):
-        if word in BAD_WORDS:
+        if word.lower() in BAD_WORDS:
             return True
     return False
 
 def openNow(sentence):
-    if "open now" in sentence.string or "opens now" in sentence.string:
+    if "open now" in sentence.string.lower() or "opens now" in sentence.string.lower():
         return True
     return False
 
@@ -240,7 +239,7 @@ def hasWifi(sentence):
 def isGetNews(sentence):
     m = search('{VP} {VBG+? JJ+?} {news | information} about {NP+}', sentence)
     if len(m) > 0:
-        if m[0].group(1).string in ['get', 'find', 'tell', 'show', 'fetch', 'search']:
+        if m[0].group(1).string.lower() in ['get', 'find', 'tell', 'show', 'fetch', 'search']:
             return True
     return False
 

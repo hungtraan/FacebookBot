@@ -16,6 +16,8 @@ def get_trending_news(keyword):
     posts = r.json()['posts']
 
     results = []
+
+    # Prune excess data in posts
     for post in posts:
         obj = {}
         obj['url'] = post['url']
