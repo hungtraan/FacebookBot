@@ -141,11 +141,11 @@ def findProperNoun(sentence):
 # input: pattern.en sentence object
 def isYelp(sentence):
     verbs = findVerb(sentence)
+    noun_phrases = findNounPhrase(sentence)
     # If match key verbs
     yelpVerbs = ['eat', 'drink', 'find', 'display', 'get']
     for verb in verbs:
         if verb.lower() in yelpVerbs:
-            noun_phrases = findNounPhrase(sentence)
             if "news" in noun_phrases or "information" in noun_phrases and "news stand" not in noun_phrases and "newsstand" not in noun_phrases:
                 return False
 
@@ -160,6 +160,7 @@ def isYelp(sentence):
         or "are there" in sentence.string \
         and noun_phrases != "":
         return True
+    
     # noun phrase + "near by"
     nearby = nearBy(sentence)
     if noun_phrases != "" and nearby:
