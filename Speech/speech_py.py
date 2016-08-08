@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import credentials
 
 def speech_to_text_ibm_rest(raw_audio):
@@ -29,7 +30,6 @@ def speech_to_text_ibm_rest(raw_audio):
 
 
 
-#!/usr/bin/env python
 # Copyright 2016 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

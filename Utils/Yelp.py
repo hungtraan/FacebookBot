@@ -1,6 +1,7 @@
 from yelp.client import Client
-from yelp.oauth1_authenticator import Oauth1Authenticator
 from YelpAPIv3 import Client3
+from GoogleMapAPI import GoogleMap
+from yelp.oauth1_authenticator import Oauth1Authenticator
 from math import radians, cos, sin, asin, sqrt
 from datetime import datetime
 import config
@@ -116,12 +117,17 @@ def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0)
     
     return returnData
 
-def hours_today(hours):
+def hours_today(hours, api='yelp'):
     todayWkday = datetime.weekday(datetime.now())
     if todayWkday >= len(hours):
         return ""
-    start = hours[todayWkday]['start']
-    end = hours[todayWkday]['end']
+    if api == 'yelp':
+        start = hours[todayWkday]['start']
+        end = hours[todayWkday]['end']
+    elif api == 'google':
+        start = hours[todayWkday]['open']['time']
+        start = hours[todayWkday]['close']['time']
+    
     return "%s:%s - %s:%s"%(start[:2], start[2:], end[:2], end[2:])
 
 def get_reviews(business_id, limit=3):
@@ -164,3 +170,49 @@ def filtered_search(returnData, filter_list):
                         result.append(business)
 
     return result
+
+googlePlaceClient = GoogleMap()
+
+def google_place_search(searchTerm, location, coordinates=None):
+
+    query = "%s %s"%(searchTerm, location) if location is not None else searchTerm
+    params = {
+        'query': query,
+    }
+    if coordinates is not None:
+        params['location'] = ",".join([str(coord) for coord in coordinates])
+        params['radius'] = 10000 # meters
+
+    returnData = {}
+    returnData['businesses'] = []
+    returnData['status'] = 0
+    
+    try:
+        results = googlePlaceClient.search_place(**params)
+        
+    except Exception, e:
+        print e
+        return returnData
+            
+    if len(results['businesses']):
+        returnData['status'] = 1
+        for biz in results:
+            details = googlePlaceClient.get_details(biz['place_id'])
+            business = {}
+            business['id'] = biz['id']
+            business['name'] = biz['name']
+            business['rating'] = str(biz['rating']) +u"\u2605 (" + str(biz['review_count']) + " reviews)"
+            business['price'] = ""
+            if 'opening_hours' in details:
+                business['opening_hours'] = details['opening_hours']['open_now']
+                if len(details['opening_hours']['periods']) > 0:
+                    business['hours_today'] = hours_today(details['opening_hours']['periods'], 'google')
+            business['address'] = biz['formatted_address']
+            if coordinates is not None:
+                business['distance'] = calculate_distance(coordinates, [biz['geometry']['location']['lat'], biz['geometry']['location']['lng']])
+            business['url'] = details['url']
+            business['image_url'] = ""
+            business['categories'] = ""
+            returnData['businesses'].append(business)
+    
+    return returnData

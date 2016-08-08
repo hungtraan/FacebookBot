@@ -146,14 +146,14 @@ def isYelp(sentence):
     yelpVerbs = ['eat', 'drink', 'find', 'display', 'get']
     for verb in verbs:
         if verb.lower() in yelpVerbs:
-            return True
+            noun_phrases = findNounPhrase(sentence)
+            if "news" in noun_phrases or "information" in noun_phrases and "news stand" not in noun_phrases and "newsstand" not in noun_phrases:
+                return False
 
-    # If match key nouns
-    noun_phrases = findNounPhrase(sentence)
-    yelpNouns = ['restaurant', 'food', 'drink', 'shop', 'store', 'bar', 'pub']
-    for noun in yelpNouns:
-        if noun in noun_phrases:
-            return True
+            yelpNouns = ['restaurant', 'food', 'drink', 'shop', 'store', 'bar', 'pub']
+            for noun in yelpNouns:
+                if noun in noun_phrases:
+                    return True
 
     # If match question/command structure
     # "is there" + noun phrase 
@@ -236,3 +236,15 @@ def hasWifi(sentence):
     if "wifi" in string:
         return True
     return False
+
+def isGetNews(sentence):
+    m = search('{VP} {VBG+? JJ+?} {news | information} about {NP+}', sentence)
+    if len(m) > 0:
+        if m[0].group(1).string in ['get', 'find', 'tell', 'show', 'fetch', 'search']:
+            return True
+    return False
+
+def getNewsQuery(sentence):
+    m = search('{NN+} about {NP+}', sentence)
+    if len(m) > 0:
+        return m[0].group(2).string

@@ -1,8 +1,8 @@
 import sys, json, traceback
-from Utils import FacebookAPI as FB, NLP, Mongo, simsimi
+from Utils import FacebookAPI as FB, NLP, Mongo, simsimi, News
 from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
-from flask import Flask, request, g, session, render_template, redirect, url_for, jsonify, flash
+from flask import Flask, request, g, session, render_template, redirect, url_for, flash
 from flask_oauth import OAuth
 
 from geopy.geocoders import Nominatim # https://github.com/geopy/geopy
@@ -236,6 +236,12 @@ def processIncoming(user_id, message, just_text=False):
             elif NLP.isMemo(message_text):
                 content = NLP.get_memo_content(message_text)
                 return handle_memo(user_id, content)
+
+            elif NLP.isGetNews(sentence):
+                keyword = NLP.getNewsQuery(sentence)
+                posts = News.get_trending_news(keyword)
+                FB.send_trending_news(app.config['PAT'], user_id, posts)
+                return 'pseudo'
 
             else:
                 # Log this message for categorization later
@@ -553,7 +559,7 @@ def handle_help(user_id):
     token = app.config['PAT']
 
     FB.send_message(token, user_id, "You can both chat and speak to me, I understand voice and natural language (I try to be smarter everyday :D)")
-    FB.send_picture(token, user_id, 'https://monosnap.com/file/fxDiSsKwBo6HvZv0EFLhYqATAQ5eou.png', "How to speak to me")
+    FB.send_picture(token, user_id, 'https://monosnap.com/file/fxDiSsKwBo6HvZv0EFLhYqATAQ5eou.png')
     FB.send_message(token, user_id, "You can also tell me to find you any restaurant/shop by saying something like \"Find me a Italian restaurant\"")
     FB.send_intro_screenshots(token, user_id, 'yelp')
 
