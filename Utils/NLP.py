@@ -238,6 +238,11 @@ def hasWifi(sentence):
     return False
 
 def isGetNews(sentence):
+    # Solve special case when "Get" at the beginning of sentence is recognized as 
+    # a proper noun
+    if "get news about" in sentence.string.lower() or "get information about" in sentence.string.lower():
+        return True
+        
     m = search('{VP} {VBG+? JJ+?} {news | information} about {NP+}', sentence)
     if len(m) > 0:
         if m[0].group(1).string.lower() in ['get', 'find', 'tell', 'show', 'fetch', 'search']:
