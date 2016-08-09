@@ -11,6 +11,7 @@ def find_user_id(users, user_object_id):
 def user_exists(users, user_id):
     user = users.find_one({'user_id': user_id})
     if user is None:
+        print user_id
         user_fb = get_user_fb(PAT, user_id)
         create_user(users, user_id, user_fb)
         return False

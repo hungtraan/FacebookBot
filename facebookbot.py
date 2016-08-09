@@ -125,6 +125,7 @@ def handle_verification():
         print "Verification failed!!!"
         return "There's nothing to look here ;)"
 
+temp_message_id = ""
 
 @app.route('/', methods=['POST'])
 def handle_messages():
@@ -135,6 +136,20 @@ def handle_messages():
     token = app.config['PAT']
 
     for sender, message in messaging_events(payload):
+        # Only press message in here
+        if not message:
+            return "ok"
+
+        # Handle Facebook bug when receiving long audio
+        # The bug: The app keeps receiving the same POST request
+        # This acts as a rescue exit signal
+        global temp_message_id 
+        mid = message['message_id']
+        if mid == temp_message_id:
+            return 'ok'
+        temp_message_id = mid
+
+        # Start processing valid requests
         if app.config['PRINT_INCOMING_MESSAGE']:
             print "User ID: %s\nMessage:%s" % (sender, message)
         try:
@@ -159,8 +174,6 @@ def handle_messages():
             if NLP.randOneIn(7):
                 FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
     return "ok"
-
-temp_audio_url = ""
 
 def processIncoming(user_id, message, just_text=False):
     # First time user
@@ -238,8 +251,14 @@ def processIncoming(user_id, message, just_text=False):
 
             elif NLP.isGetNews(sentence):
                 keyword = NLP.getNewsQuery(sentence)
+                FB.send_message(app.config['PAT'], user_id, "Scanning %s documents on the Internet B-)"%(NLP.oneOf(['9012710125','124012581205810','79182501251', '826153892573'])) )
+                FB.show_typing(app.config['PAT'], user_id)
                 posts = News.get_trending_news(keyword)
-                FB.send_trending_news(app.config['PAT'], user_id, posts)
+                FB.show_typing(app.config['PAT'], user_id, 'typing_off')
+                if len(posts) == 0:
+                    FB.send_message(app.config['PAT'], user_id, "Sorry, I can't find any news for that :(")
+                else:
+                    FB.send_trending_news(app.config['PAT'], user_id, posts)
                 return 'pseudo'
 
             else:
@@ -254,8 +273,8 @@ def processIncoming(user_id, message, just_text=False):
                         response = simSimi.getConversation(message_text)['response']
                         if bad_times == 5:
                             return "Hmm... I can't think of anything witty enough to respond to that :P"
-                    if 'simsimi' in response:
-                        response = response.replace("simsimi", "Optimist Prime")
+                    if 'simsimi' in response.lower():
+                        response = response.lower().replace("simsimi", "Optimist Prime")
                     return response
                 except simsimi.SimSimiException as e:
                     print e
@@ -277,14 +296,6 @@ def processIncoming(user_id, message, just_text=False):
     # Audio message type =========================================================
     elif message['type'] == 'audio':
         audio_url = message['data']
-
-        # Handle Facebook bug when receiving long audio
-        # The bug: The app keeps receiving the same POST request
-        # This acts as a rescue exit signal
-        global temp_audio_url 
-        if audio_url == temp_audio_url:
-            return 'pseudo'
-        temp_audio_url = audio_url
 
         # Get text from audio
         try:
@@ -323,15 +334,22 @@ def messaging_events(payload):
     provided payload.
     """
     data = json.loads(payload)
-    # print data
+    
+
+
     messaging_events = data["entry"][0]["messaging"]
     
     for event in messaging_events:
         sender_id = event["sender"]["id"]
+
+        # Not a message
+        if "message" not in event:
+            yield sender_id, None
+
         if "message" in event and "text" in event["message"] and "quick_reply" not in event["message"]:
             data = event["message"]["text"].encode('unicode_escape')
             Mongo.log_message(log, sender_id, 'text', data)
-            yield sender_id, {'type':'text', 'data': data}
+            yield sender_id, {'type':'text', 'data': data, 'message_id': event['message']['mid']}
 
         elif "attachments" in event["message"]:
             if "location" == event['message']['attachments'][0]["type"]:
@@ -342,23 +360,25 @@ def messaging_events(payload):
 
                 Mongo.log_message(log, sender_id, 'coordinates', str([latitude, longitude]))
 
-                yield sender_id, {'type':'location','data':[latitude, longitude]}
+                yield sender_id, {'type':'location','data':[latitude, longitude],'message_id': event['message']['mid']}
 
             elif "audio" == event['message']['attachments'][0]["type"]:
                 audio_url = event['message'][
                     'attachments'][0]['payload']['url']
                 Mongo.log_message(log, sender_id, 'audio', audio_url)
-                yield sender_id, {'type':'audio','data': audio_url}
+                yield sender_id, {'type':'audio','data': audio_url, 'message_id': event['message']['mid']}
             
             else:
                 Mongo.log_message(log, sender_id, 'other1', event["message"])
-                yield sender_id, {'type':'other','data':"I can't echo this"}
+                yield sender_id, {'type':'text','data':"I don't understand this", 'message_id': event['message']['mid']}
+        
         elif "quick_reply" in event["message"]:
             data = event["message"]["quick_reply"]["payload"]
-            yield sender_id, {'type':'quick_reply','data': data}
+            yield sender_id, {'type':'quick_reply','data': data, 'message_id': event['message']['mid']}
+        
         else:
             Mongo.log_message(log, sender_id, 'other2', event["message"])
-            yield sender_id, {'type':'other','data':"I can't echo this"}
+            yield sender_id, {'type':'text','data':"I don't understand this", 'message_id': event['message']['mid']}
 
 def get_user_from_message(payload):
     data = json.loads(payload)

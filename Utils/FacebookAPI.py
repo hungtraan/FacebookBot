@@ -3,9 +3,12 @@ import json
 
 def get_user_fb(token, user_id):
     r = requests.get("https://graph.facebook.com/v2.6/" + user_id,
-                      params={"fields": "first_name,last_name,profile_pic,locale,timezone,gender"
-                      ,"access_token": token
-                      })
+                    params={"fields": "first_name,last_name,profile_pic,locale,timezone,gender"
+                        ,"access_token": token
+                    })
+    if r.status_code != requests.codes.ok:
+        print r.text
+        return
     user = json.loads(r.content)
     return user
 
