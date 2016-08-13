@@ -1,5 +1,5 @@
-import requests
-import json
+import requests, json
+from flask import url_for
 
 def get_user_fb(token, user_id):
     r = requests.get("https://graph.facebook.com/v2.6/" + user_id,
@@ -182,9 +182,12 @@ def send_yelp_results(token, user_id, businesses):
         if 'hours_today' in business and len(business['hours_today']) > 0:
             subtitle += "Hours today: %s"%(business['hours_today'])
         subtitle += "\n" + business['categories']
+
+        img_url = business['image_url'] if business['image_url'] != "" else url_for('static', filename='assets/img/empty-placeholder.jpg', _external=True)
+        
         obj = {
                 "title": business['name'] + " - " + business['rating'] ,
-                "image_url": business['image_url'],
+                "image_url": img_url,
                 "subtitle": subtitle,
                 "buttons":[
                     {
@@ -244,33 +247,39 @@ def send_url(token, user_id, text, title, url):
     if r.status_code != requests.codes.ok:
         print r.text
 
-def send_intro_screenshots(token, user_id, feature):
+def send_intro_screenshots(app, token, user_id):
+    chat_speak = {
+        "title": 'You can both chat and speak to me',
+        "image_url": url_for('static', filename="assets/img/intro/1-voice-and-text.jpg", _external=True),
+        "subtitle": 'I understand voice and natural language (I try to be smarter everyday :D)'
+    }
+    location_text = {
+        "title": "Find a restaurant/shop for you",
+        "image_url": url_for('static', filename="assets/img/intro/2-yelp-gps-location.jpg", _external=True),
+        "subtitle": "Tell me what you want, then your location name, address or GPS"
+    }
+    location_gps = {
+        "title": "In case you've never sent location in Messenger",
+        "image_url": url_for('static', filename="assets/img/intro/3-how-to-send-location.jpg", _external=True),
+        "subtitle": "GPS will be the best option, but just a distinctive name would do",
+    }
+    location_save = {
+        "title": "Save your favorite locations",
+        "image_url": url_for('static', filename="assets/img/intro/4-save-location.jpg", _external=True),
+        "subtitle": "Make it convenient for you"
+    }
+    memo1 = {
+        "title": "Say \"Memorize\" or \"Memorize this for me\"",
+        "image_url": url_for('static', filename="assets/img/intro/5-memo.jpg", _external=True),
+        "subtitle": "Then your memo in the same/separate message"
+    }
+    news = {
+      "title": "Keep you updated",
+      "image_url": url_for('static', filename="assets/img/intro/6-news.jpg", _external=True),
+      "subtitle": "With the most trending news"
+    }
 
-    if feature == 'yelp':
-        location_text = {
-            "title": "Tell me the name of the location",
-            "image_url": "https://monosnap.com/file/1zh6Wt1C7Bt2sqOP7wly8cXZQbmLAT.png",
-            "subtitle": "Find a restaurant/shop for you",
-        }
-        location_gps = {
-            "title": "Send me the GPS information",
-            "image_url": "https://monosnap.com/file/SFQWVXrRSEof5DuhCohUcOqgd3yv28.png",
-            "subtitle": "Find a restaurant/shop for you",
-        }
-        location_save = {
-            "title": "I can also save your favorite locations",
-            "image_url": "https://monosnap.com/file/oCUr8Cz7hwijK3EcuisdBAAFvJd79a.png",
-            "subtitle": "Find a restaurant/shop for you",
-        }
-        options = [location_text, location_gps, location_save]
-
-    elif feature == 'memo':
-        memo1 = {
-            "title": "Keeping your memos",
-            "image_url": "https://monosnap.com/file/aUQoBEpgmy6aPET9S6bb3j6CS8eLep.png",
-            "subtitle": "Say \"memorize\", followed by your memo in the same or separate message",
-        }
-        options = [memo1]
+    options = [chat_speak, location_text, location_gps, location_save, memo1, news]
 
     r = requests.post("https://graph.facebook.com/v2.6/me/messages",
           params={"access_token": token},
@@ -292,11 +301,11 @@ def send_intro_screenshots(token, user_id, feature):
 
 def send_trending_news(token, user_id, posts):
     options = []
-
     for post in posts:
+        img_url = post['image_url'] if post['image_url'] != "" else url_for('static', filename='assets/img/empty-placeholder.jpg', _external=True)
         obj = {
             "title": post['title'],
-            "image_url": post['image_url'],
+            "image_url": img_url,
             "subtitle": post['subtitle'],
             "buttons":[
                 {
@@ -324,3 +333,49 @@ def send_trending_news(token, user_id, posts):
                       headers={'Content-type': 'application/json'})
     if r.status_code != requests.codes.ok:
         print r.text
+
+
+def set_menu():
+    r = requests.post("https://graph.facebook.com/v2.6/me/thread_settings",
+                    params={"access_token": 'EAADhYj0lr14BAGP2HCx2mcYcxQbtQG7iXfaGpOieFsGlgJEYv0Y74bdIYtQ3UcnK1kktfUCDInciDniwTOm1c6l2Fq2GEBsm0Lu4syz5HUc41MGepASZBuXw1caZBkZBGRX5kIZCT7q5QOkiPVnZC3n8iBcqVMCBGnZCiSgscQogZDZD'},
+                    data=json.dumps({
+                        "setting_type" : "call_to_actions",
+                        "thread_state" : "existing_thread",
+                        "call_to_actions":[
+                            {
+                                "type":"postback",
+                                "title":"What can you do?",
+                                "payload":"OPTIMIST_HELP"
+                            },
+                            {
+                                "type":"web_url",
+                                "title":"View Facebook Page",
+                                "url": "https://www.facebook.com/optimistPrimeBot/"
+                            }
+                        ]
+                    }),
+                    headers={'Content-type': 'application/json'})
+    print r.content
+    if r.status_code != requests.codes.ok:
+        print r.text
+
+def set_get_started_button():
+
+    r = requests.post("https://graph.facebook.com/v2.6/me/thread_settings",
+                    params={"access_token": 'EAADhYj0lr14BAGP2HCx2mcYcxQbtQG7iXfaGpOieFsGlgJEYv0Y74bdIYtQ3UcnK1kktfUCDInciDniwTOm1c6l2Fq2GEBsm0Lu4syz5HUc41MGepASZBuXw1caZBkZBGRX5kIZCT7q5QOkiPVnZC3n8iBcqVMCBGnZCiSgscQogZDZD'},
+                    data=json.dumps({
+                        "setting_type":"call_to_actions",
+                        "thread_state":"new_thread",
+                        "call_to_actions":[
+                            {
+                            "payload":"OPTIMIST_GET_STARTED"
+                            }
+                        ]
+                    }),
+                    headers={'Content-type': 'application/json'})
+    print r.content
+    if r.status_code != requests.codes.ok:
+        print r.text
+
+# set_menu()
+# set_get_started_button()

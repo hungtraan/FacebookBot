@@ -21,7 +21,7 @@ yelpClient3 = Client3(config.YELP_V3_TOKEN)
 
 def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
-        limit = 5
+        limit = 10
 
     params = {
         'term': searchTerm,
@@ -65,7 +65,7 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
 
 def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
-        limit = 5
+        limit = 10
 
     params = {
         'term': searchTerm,

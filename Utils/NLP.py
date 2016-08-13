@@ -6,8 +6,8 @@ from pattern.search import search
 
 # Random response sets
 no_response = ["*scratch my head* :(", "How do I respond to that... :O", "I can be not-so-smart from time to time... :(", "Err... you know I'm not human, right? :O"]
-error = ["Sorry I've got a little bit sick. BRB :(", "Oops... 404 My Witty Mind Not Found :O", "Oops... My brain went MIA in the cloud :(", "Hmm... How should I respond to that..."]
-looking_replies = ["Sure, give me a few seconds... B-)", "Scanning the world... :D", "Zoom zoom zoom...", "Going into the Food Cerebro... B-)", "Believe me, I'm a foodie, not an engineer..."]
+error = ["Sorry I've got a little bit sick. BRB in 2 min :(", "Oops... 404 My Witty Mind Not Found :O", "Oops... My brain went MIA in the cloud, BRB in 2 :(", "Hmm... How should I respond to that... :O"]
+looking_replies = ["Sure, give me a few seconds... B-)", "Scanning the world... :D", "Zoom zoom zoom...", "Going into the Food Cerebro... B-)", "Believe me, I'm a foodie, not an engineer... B-)"]
 # END random response sets
 
 
@@ -15,9 +15,32 @@ looking_replies = ["Sure, give me a few seconds... B-)", "Scanning the world... 
 def removePunctuation(inp_str):
     return inp_str.translate(None, string.punctuation)
 
+def isAskingBotInformation(sentence):
+    m = search('what *+ your name', sentence)
+    if len(m) > 0:
+        return True
+
+    m = search('VP+ *+ your name', sentence)
+    if len(m) > 0:
+        return True
+
+    m = search('who *+ your creator|dad|mom|father|mother|papa|mama|daddy|mommy', sentence)
+    if len(m) > 0:
+        return True
+
+    m = search('VP+ *+ your creator|dad|mom|father|mother', sentence)
+    if len(m) > 0:
+        return True
+
+    m = search('who made|create|wrote|built you', sentence)
+    if len(m) > 0:
+        return True
+
+    return False
+
 def isGreetings(inp_str):
     string = inp_str.lower().split(" ")
-    if len(string) > 5:
+    if len(string) > 3:
         return False
     greetings = ['hi','hey','hello', 'greetings', 'good morning', 'good afternoon', 'good evening']
     for word in greetings:
@@ -127,6 +150,8 @@ def findNounPhrase(sentence):
         if chunk.type == 'NP':
             res += " ".join([w.string for w in chunk.words if w.type not in ['PRP', 'DT']])
             res += " "
+    for verb in ['find','get','show','search']:
+        res = res.replace(verb, "")
     return res
 
 # input: pattern.en sentence object
@@ -159,20 +184,27 @@ def isYelp(sentence):
     if "is there" in sentence.string \
         or "are there" in sentence.string \
         and noun_phrases != "":
+
         return True
     
     # noun phrase + "near by"
     nearby = nearBy(sentence)
     if noun_phrases != "" and nearby:
         return True
+
+    m = search('{fine|find|get|find|show|search} { *+ }', sentence)
+    # Sometimes Speech to Text misunderstood "find" as "fine"
+    print m
+    if len(m) > 0:
+        return True
+
     return False
 
 # input: pattern.en sentence object, unless specified otherwise in inp_type
-def dismissPreviousRequest(string, inp_type='sentence'):
-    if inp_type == 'sentence':
-        string = string.string.lower()
+def isDismissPreviousRequest(string):
+    string = string.lower()
     stop_signals = ["never mind", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
-    if string == "no":
+    if "no" in string:
         return True
     for signal in stop_signals:
         if signal in string:
@@ -187,7 +219,7 @@ def nearBy(sentence):
             res += " ".join([w.string for w in chunk.words if w.type in ['RB', 'PRP', 'IN']])
             res += " "
     res = res.strip()
-    if res in ['near me', 'around here', 'around', 'here', 'near here', 'nearby', 'near by', 'close by', 'close']:
+    if res in ['near me', 'around here', 'around', 'near here', 'nearby', 'near by', 'close by', 'close']:
         return True
     return False
 
@@ -238,18 +270,46 @@ def hasWifi(sentence):
     return False
 
 def isGetNews(sentence):
+    m = search('{VP} {VBG+? JJ+?} {news | information} about|on|regarding { *+ }', sentence)
+    if len(m) > 0:
+        if m[0].group(1).string.lower() in ['look', 'get', 'find', 'tell', 'show', 'fetch', 'search']:
+            return True
+
     # Solve special case when "Get" at the beginning of sentence is recognized as 
     # a proper noun
-    if "get news about" in sentence.string.lower() or "get information about" in sentence.string.lower():
-        return True
-        
-    m = search('{VP} {VBG+? JJ+?} {news | information} about {NP+}', sentence)
+    m = search('get|find|look *+ news|information about|on|regarding', sentence)
     if len(m) > 0:
-        if m[0].group(1).string.lower() in ['get', 'find', 'tell', 'show', 'fetch', 'search']:
-            return True
+        return True
+
     return False
 
 def getNewsQuery(sentence):
-    m = search('{NN+} about {NP+}', sentence)
+    m = search('{NP+} about|on|regarding { *+ }', sentence)
     if len(m) > 0:
-        return m[0].group(2).string
+        return m[0].group(2).string.replace('.','')
+
+def handleBotInfo(sentence):
+    name = ["Optimus... ah no, Optimist Prime :D", "I.am.the.legendary.Optimist.Prime B-)", "The most Optimist Prime! B-)", "You knew already *tsk tsk*"]
+    creator = ["It's a mystery :O", "Are you optimist enough to know? ;)", "You are among the few who I tell: All I know about my creator is the initials HT :)", "It remains a mystery to me even :(", "It was erased from my memory from the start :("]
+
+    m = search('what *+ your name', sentence)
+    if len(m) > 0:
+        return oneOf(name)
+
+    m = search('VP+ *+ your name', sentence)
+    if len(m) > 0:
+        return oneOf(name)
+
+    m = search('who *+ your creator|dad|mom|father|mother|papa|mama|daddy|mommy', sentence)
+    if len(m) > 0:
+        return oneOf(creator)
+
+    m = search('VP+ *+ your creator|dad|mom|father|mother|papa|mama|daddy|mommy', sentence)
+    if len(m) > 0:
+        return oneOf(creator)
+
+    m = search('who *+ creates|created|gave_birth *+ you', sentence)
+    if len(m) > 0:
+        return oneOf(creator)
+
+    return "Can you guess? ;)"

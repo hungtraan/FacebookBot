@@ -1,4 +1,4 @@
-import sys, json, traceback
+import sys, json, traceback, random
 from Utils import FacebookAPI as FB, NLP, Mongo, simsimi, News
 from Utils.Yelp import yelp_search_v3 as yelp_search
 from Speech import processor as STT # Speech to Text
@@ -10,7 +10,7 @@ from pattern.en import parsetree
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 
-application = Flask(__name__, instance_relative_config=True)
+application = Flask(__name__, instance_relative_config=True, static_url_path='')
 application.config.from_object('config')
 application.config.from_pyfile('config.py', silent=True)
 
@@ -51,6 +51,7 @@ def before_request():
     #         user_id = data['id']
             # g.web_user = Mongo.get_user_mongo(users, user_id)
 
+# ======================= Routes ===========================
 @app.route('/tos', methods=['GET'])
 def tos():
     return render_template('tos.html')
@@ -123,7 +124,12 @@ def handle_verification():
         return request.args.get('hub.challenge', '')
     else:
         print "Verification failed!!!"
-        return "There's nothing to look here ;)"
+        return render_template('index.html')
+
+# ======================= END Routes ===========================
+
+
+# ======================= Bot processing ===========================
 
 temp_message_id = ""
 
@@ -135,44 +141,60 @@ def handle_messages():
         print payload
     token = app.config['PAT']
 
-    for sender, message in messaging_events(payload):
-        # Only press message in here
-        if not message:
-            return "ok"
+    webhook_type = get_type_from_payload(payload)
 
-        # Handle Facebook bug when receiving long audio
-        # The bug: The app keeps receiving the same POST request
-        # This acts as a rescue exit signal
-        global temp_message_id 
-        mid = message['message_id']
-        if mid == temp_message_id:
-            return 'ok'
-        temp_message_id = mid
+    # Handle Postback
+    if webhook_type == 'postback':
+        for sender_id, postback_payload in postback_events(payload):
+            if postback_payload == 'OPTIMIST_HELP':
+                handle_help(sender_id)
 
-        # Start processing valid requests
-        if app.config['PRINT_INCOMING_MESSAGE']:
-            print "User ID: %s\nMessage:%s" % (sender, message)
-        try:
-            FB.show_typing(token, sender)
-            response = processIncoming(sender, message)
-            FB.show_typing(token, sender, 'typing_off')
+            elif postback_payload == 'OPTIMIST_GET_STARTED':
+                if not Mongo.user_exists(users, sender_id):
+                    g.user = Mongo.get_user_mongo(users, sender_id)
+                    return handle_first_time_user(users, g.user)
 
-            if response is not None and response != 'pseudo':
-                # 'pseudo' is an "ok" signal for functions that sends response on their own
-                # without returning anything back this function
-                FB.send_message(token, sender, response)
+    # Handle messages
+    elif webhook_type == 'message':
+        for sender_id, message in messaging_events(payload):
+            # Only press message in here
+            if not message:
+                return "ok"
 
-            elif response != 'pseudo':
+            # Handle Facebook bug when receiving long audio
+            # The bug: The app keeps receiving the same POST request
+            # This acts as a rescue exit signal
+            global temp_message_id 
+            mid = message['message_id']
+            if mid == temp_message_id:
+                return 'ok'
+            temp_message_id = mid
+
+            # Start processing valid requests
+            if app.config['PRINT_INCOMING_MESSAGE']:
+                print "User ID: %s\nMessage:%s" % (sender_id, message)
+            try:
+                FB.show_typing(token, sender_id)
+                response = processIncoming(sender_id, message)
+                FB.show_typing(token, sender_id, 'typing_off')
+
+                if response is not None and response != 'pseudo':
+                    # 'pseudo' is an "ok" signal for functions that sends response on their own
+                    # without returning anything back this function
+                    print response
+                    FB.send_message(token, sender_id, response)
+
+                elif response != 'pseudo':
+                    if NLP.randOneIn(7):
+                        FB.send_message(token, sender_id, NLP.oneOf(NLP.no_response))
+                        FB.send_picture(token, sender_id, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
+            except Exception, e:
+                print e
+                traceback.print_exc()
+                FB.send_message(app.config['PAT'], sender_id, NLP.oneOf(NLP.error))
+                Mongo.pop_context(users, g.user)
                 if NLP.randOneIn(7):
-                    FB.send_message(token, sender, NLP.oneOf(NLP.no_response))
-                    FB.send_picture(token, sender, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
-        except Exception, e:
-            print e
-            traceback.print_exc()
-            FB.send_message(app.config['PAT'], sender, NLP.oneOf(NLP.error))
-            Mongo.pop_context(users, g.user)
-            if NLP.randOneIn(7):
-                FB.send_picture(app.config['PAT'], sender, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
+                    FB.send_picture(app.config['PAT'], sender_id, 'https://monosnap.com/file/3DnnKT60TkUhF93dwjGbNQCaCUK9WH.png')
     return "ok"
 
 def processIncoming(user_id, message, just_text=False):
@@ -209,12 +231,17 @@ def processIncoming(user_id, message, just_text=False):
         sentence = s[0]
         nounPhrase = NLP.findNounPhrase(sentence)
 
-        if NLP.dismissPreviousRequest(sentence):
-            Mongo.pop_context(users, g.user)
-            return "Sure, no problem"
+        
+
+        if NLP.isAskingBotInformation(sentence):
+            return NLP.handleBotInfo(sentence)
 
         if contextData is not None and len(contextData) > 0:
             context = contextData[-1]
+
+            if NLP.isDismissPreviousRequest(message_text):
+                Mongo.pop_context(users, g.user)
+                return "Sure, no problem"
 
             # Find food functionality
             if context['context'] == 'find-food':
@@ -237,7 +264,8 @@ def processIncoming(user_id, message, just_text=False):
             elif NLP.isGoodbye(message_text):
                 return NLP.sayByeTimeZone(g.user)
 
-            elif NLP.isYelp(sentence):                
+            elif NLP.isYelp(sentence): 
+                print nounPhrase               
                 return handle_find_food(user_id, None, sentence, nounPhrase, message, message_text, 'receive_request')
 
             elif NLP.isMemoCommandOnly(message_text):
@@ -251,12 +279,16 @@ def processIncoming(user_id, message, just_text=False):
 
             elif NLP.isGetNews(sentence):
                 keyword = NLP.getNewsQuery(sentence)
-                FB.send_message(app.config['PAT'], user_id, "Scanning %s documents on the Internet B-)"%(NLP.oneOf(['9012710125','124012581205810','79182501251', '826153892573'])) )
+                FB.send_message(app.config['PAT'], user_id, "Scanning %s documents on the Internet B-)"%(random.randint(9999,999999)*random.randint(9999,999999)+random.randint(1,9)) )
                 FB.show_typing(app.config['PAT'], user_id)
                 posts = News.get_trending_news(keyword)
                 FB.show_typing(app.config['PAT'], user_id, 'typing_off')
+
+                # Log if there's no result to analyze
                 if len(posts) == 0:
                     FB.send_message(app.config['PAT'], user_id, "Sorry, I can't find any news for that :(")
+                    Mongo.log_message(log, user_id, 'no_news', keyword)
+
                 else:
                     FB.send_trending_news(app.config['PAT'], user_id, posts)
                 return 'pseudo'
@@ -276,9 +308,10 @@ def processIncoming(user_id, message, just_text=False):
                     if 'simsimi' in response.lower():
                         response = response.lower().replace("simsimi", "Optimist Prime")
                     return response
+
                 except simsimi.SimSimiException as e:
                     print e
-                    return
+                    return # return None will trigger a bot confusion response
     # ==/ END Text message type =====================================================
 
     # Location message type =========================================================
@@ -313,6 +346,7 @@ def processIncoming(user_id, message, just_text=False):
         # Begin processing audio command
         message_text = message_text.decode('utf-8')
         return processIncoming(user_id, message_text, True)
+
     # ==/ End Audio message type ====================================================
 
 
@@ -325,18 +359,38 @@ def processIncoming(user_id, message, just_text=False):
     # ==/ END Quick Reply message type ==================================================
 
 
+    # Unrecognizable incoming, remove context and reset all data to start afresh
     else:
         Mongo.pop_context(users, g.user)
         Mongo.reset_yelp_offset(users, g.user)
 
-def messaging_events(payload):
-    """Generate tuples of (sender_id, message_text) from the
-    provided payload.
-    """
+
+# Get type of webhook
+# Current support: message, postback
+# Reference: https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-received
+def get_type_from_payload(payload):
+    data = json.loads(payload)
+    if "postback" in data["entry"][0]["messaging"][0]:
+        return "postback"
+
+    elif "message" in data["entry"][0]["messaging"][0]:
+        return "message"
+
+def postback_events(payload):
     data = json.loads(payload)
     
+    postbacks = data["entry"][0]["messaging"]
+    
+    for event in postbacks:
+        sender_id = event["sender"]["id"]
+        postback_payload = event["postback"]["payload"]
+        yield sender_id, postback_payload
 
-
+# Generate tuples of (sender_id, message_text) from the provided payload.
+def messaging_events(payload):
+    
+    data = json.loads(payload)
+    
     messaging_events = data["entry"][0]["messaging"]
     
     for event in messaging_events:
@@ -481,7 +535,7 @@ def handle_memo(user_id, message_text):
     return 'pseudo'
 
 def handle_quick_reply(user_id, context, cmd):
-    # cmd: [yelp-more, yelp-ok]
+    # Yelp YES response to "Do you want more result?"
     if cmd == 'yelp-more-yes':
         offset = g.user['yelp_offset'] + 5
         Mongo.increment_yelp_offset(users, g.user, 5) # actually update
@@ -497,6 +551,7 @@ def handle_quick_reply(user_id, context, cmd):
             Mongo.reset_yelp_offset(users, g.user)
             return "That's all I found for now :)"
 
+    # Yelp NO response to "Do you want more result?"
     elif cmd == 'yelp-more-no':
         context = g.user['contexts'][-1]
         Mongo.reset_yelp_offset(users, g.user)
@@ -519,6 +574,7 @@ def handle_quick_reply(user_id, context, cmd):
             Mongo.pop_context(users, g.user)
             return "Glad I can help :)"
     
+    # Yelp YES response to "Do you want to save this location"
     elif cmd == 'yelp-save-location-yes':
         context = g.user['contexts'][-1]
         latest_coords = context['coordinates']
@@ -539,11 +595,13 @@ def handle_quick_reply(user_id, context, cmd):
             Mongo.reset_yelp_offset(users, g.user)
             return "Ta da! I wrote it to my cloudy memory :D"
 
+    # Yelp NO response to "Do you want to save this location"
     elif cmd == 'yelp-save-location-no':
         Mongo.pop_context(users, g.user)
         Mongo.reset_yelp_offset(users, g.user)
         return "OK (y) Hope you like those places I found :D"
     
+    # Yelp RENAME response to "Do you want to save this location"
     elif cmd == 'yelp-save-location-rename':
         context = g.user['contexts'][-1]
         latest_location = context['location']
@@ -556,13 +614,15 @@ def handle_quick_reply(user_id, context, cmd):
         Mongo.add_context(users, g.user, contextNow)
         return "What do you want to call it? :D"
 
+    # Yelp choose one of the saved location
     elif 'yelp-cached-location-' in cmd:
-        idx = int(cmd[-1])
+        idx = int(cmd[-1]) # last character of payload string code
         location = get_recent_locations_yelp(idx)
         FB.send_message(app.config['PAT'], user_id, "Looking around %s :D"%(location['name']))
         message = {}
         message['data'] = location['coordinates']
         return handle_find_food(user_id, context, None, None, message, None, 'receive_location_gps', 1)
+
 
 def handle_first_time_user(users, user):
     user_id = user['user_id']
@@ -570,21 +630,17 @@ def handle_first_time_user(users, user):
 
     hi = "%s %s, nice to meet you :)"%(NLP.sayHiTimeZone(user), user['first_name'])
     FB.send_message(token, user_id, hi)
+
     FB.send_picture(app.config['PAT'], user_id, 'https://monosnap.com/file/I6WEAs2xvpZ5qTNmVauNguEzcaRrnI.png')
     
     handle_help(user_id)
+    FB.send_message(app.config['PAT'], user_id, "Next time just tell me \"help\" to view this again :D")
+
 
 def handle_help(user_id):
-    token = app.config['PAT']
-
-    FB.send_message(token, user_id, "You can both chat and speak to me, I understand voice and natural language (I try to be smarter everyday :D)")
-    FB.send_picture(token, user_id, 'https://monosnap.com/file/fxDiSsKwBo6HvZv0EFLhYqATAQ5eou.png')
-    FB.send_message(token, user_id, "You can also tell me to find you any restaurant/shop by saying something like \"Find me a Italian restaurant\"")
-    FB.send_intro_screenshots(token, user_id, 'yelp')
-
-    FB.send_message(token, user_id, "Lastly, I can keep your memos for you on the cloud, you only need to chat or speak to me something like \"Memorize\" or \"Memorize this for me: The long memo (in the same recording)\"")
-    FB.send_intro_screenshots(token, user_id, 'memo')
-
+    intro = "I can help you find restaurants, shops, I can find trending news about any topic, and serve as your personal memo keepr. Details below:"
+    FB.send_message(app.config['PAT'], user_id, intro)
+    FB.send_intro_screenshots(app, app.config['PAT'], user_id)
 
 
 def dev_area(message_text):
