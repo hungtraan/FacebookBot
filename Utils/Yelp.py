@@ -19,7 +19,7 @@ auth = Oauth1Authenticator(
 yelpClient = Client(auth)
 yelpClient3 = Client3(config.YELP_V3_TOKEN)
 
-def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
+def yelp_search_v2(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
         limit = 10
 
@@ -173,6 +173,8 @@ def filtered_search(returnData, filter_list):
 
 googlePlaceClient = GoogleMap()
 
+# Not using Google Place Search since it doesn't provide a image URL
+# but rather an image blob
 def google_place_search(searchTerm, location, coordinates=None):
 
     query = "%s %s"%(searchTerm, location) if location is not None else searchTerm

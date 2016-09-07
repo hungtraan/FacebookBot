@@ -12,16 +12,15 @@ from pymongo import MongoClient
 
 application = Flask(__name__, instance_relative_config=True, static_url_path='')
 application.config.from_object('config')
-application.config.from_pyfile('config.py', silent=True)
+application.config.from_pyfile('config.py', silent=True)  # Config for local development is found at: instance/config.py. This will overwrite configs in the previous line. The instance folder is ignored in .gitignore, so it won't be deployed to Heroku, in effect applying the production configs.
 
 app = application
 
-app.secret_key = 'super secret key'
 mongo = MongoClient(app.config['MONGO_URI'])
 db = mongo[app.config['MONGO_DBNAME']] # Get database
 users = db.users # Get users collection
 log = db.message_log # Get log collection
-uncategorized_messages = db.uncategorized_messages
+uncategorized_messages = db.uncategorized_messages # Messages that does not correspond to any functions, used for future categorization
 memos = db.memos
 
 simSimi = simsimi.SimSimi(
@@ -29,21 +28,10 @@ simSimi = simsimi.SimSimi(
         conversation_key=app.config['SIMSIMI_KEY']
 )
 
-# https://pythonhosted.org/Flask-OAuth/
-oauth = OAuth()
-facebook = oauth.remote_app('facebook',
-    base_url='https://graph.facebook.com/',
-    request_token_url=None,
-    access_token_url='/oauth/access_token',
-    authorize_url='https://www.facebook.com/dialog/oauth',
-    consumer_key=app.config['FACEBOOK_APP_ID'],
-    consumer_secret=app.config['FACEBOOK_APP_SECRET'],
-    request_token_params={'scope': 'email,public_profile'}
-)
-
 @app.before_request
 def before_request():
     g.user = None
+    # Saving the user into the session on the web 
     # g.web_user = None
     # if 'logged_in' in session and session['logged_in']:
     #     data = facebook.get('/me').data
@@ -52,14 +40,19 @@ def before_request():
             # g.web_user = Mongo.get_user_mongo(users, user_id)
 
 # ======================= Routes ===========================
+
+# Terms of Service page, required for Facebook App Review
 @app.route('/tos', methods=['GET'])
 def tos():
     return render_template('tos.html')
 
+# Privacy page, required for Facebook App Review
 @app.route('/privacy', methods=['GET'])
 def privacy():
     return render_template('privacy.html')
 
+# BEGIN Login & Logout page, used for accessing Memo feature on the web
+# Not currently used since Facebook has different chat ID vs user ID, so it is impossible to create a Facebook login for Memo based on chat ID the bot receives
 @app.route('/login')
 def login():
     print url_for('oauth_authorized')
@@ -71,6 +64,28 @@ def logout():
     session.pop('logged_in', None)
     session.pop('fb_token', None)
     return redirect(url_for('memo'))
+# END Login & Logout page
+
+# BEGIN Authorization for Facebook Login
+"""
+The Facebook Login code below is an attempt to allow users
+to login with Facebook to access their own memos. However,
+it turned out that Facebook uses different user_ids for Facebook 
+profile (which is used for login) and Messenger. The same account
+has 2 different user_ids for each, and the bot only receives 
+the Messenger user_id from the Messenger API, making this feature impossible. Future: We might use Account Linking for this.
+"""
+# https://pythonhosted.org/Flask-OAuth/
+oauth = OAuth()
+facebook = oauth.remote_app('facebook',
+    base_url='https://graph.facebook.com/',
+    request_token_url=None,
+    access_token_url='/oauth/access_token',
+    authorize_url='https://www.facebook.com/dialog/oauth',
+    consumer_key=app.config['FACEBOOK_APP_ID'],
+    consumer_secret=app.config['FACEBOOK_APP_SECRET'],
+    request_token_params={'scope': 'email,public_profile'}
+)
 
 @app.route('/oauth-authorized')
 @facebook.authorized_handler
@@ -92,15 +107,16 @@ def oauth_authorized(resp):
     flash('You are signed in as %s'%(user_name))
     return redirect(next_url)
 
-
 @facebook.tokengetter
 def get_fb_token(token=None):
     return session.get('fb_token')
+# END Authorization for Facebook Login
 
 @app.route('/hi', methods=['GET'])
 def hi():
     return render_template('hi.html')
 
+# Temporary (unsecured solution): Get memos by requesting the (Messenger) user_id only
 @app.route('/memo/<user_id>', methods=['GET'])
 def memo(user_id):
     if 'logged_in' in session and session['logged_in']:
@@ -119,11 +135,11 @@ def memo(user_id):
 @app.route('/', methods=['GET'])
 def handle_verification():
     print "Handling Verification."
-    if request.args.get('hub.verify_token', '') == 'baddest_ass_bot_you_know':
-        print "Verification successful!"
+    if request.args.get('hub.verify_token', '') == app.config['OWN_VERIFICATION_TOKEN']:
+        print "Webhook verified!"
         return request.args.get('hub.challenge', '')
     else:
-        print "Verification failed!!!"
+        print "Wrong verification token!"
         return render_template('index.html')
 
 # ======================= END Routes ===========================
@@ -131,7 +147,7 @@ def handle_verification():
 
 # ======================= Bot processing ===========================
 
-temp_message_id = ""
+temp_message_id = "" # Noted below
 
 @app.route('/', methods=['POST'])
 def handle_messages():
@@ -144,6 +160,8 @@ def handle_messages():
     webhook_type = get_type_from_payload(payload)
 
     # Handle Postback
+    # Developer-defined postbacks
+    # Currently in use: Help button (in Persistent Menu), and Getting Started button (first-time users will see this)
     if webhook_type == 'postback':
         for sender_id, postback_payload in postback_events(payload):
             if postback_payload == 'OPTIMIST_HELP':
@@ -157,11 +175,11 @@ def handle_messages():
     # Handle messages
     elif webhook_type == 'message':
         for sender_id, message in messaging_events(payload):
-            # Only press message in here
+            # Only process message in here
             if not message:
                 return "ok"
 
-            # Handle Facebook bug when receiving long audio
+            # Handle Facebook's bug when receiving long audio
             # The bug: The app keeps receiving the same POST request
             # This acts as a rescue exit signal
             global temp_message_id 
@@ -387,6 +405,7 @@ def postback_events(payload):
         yield sender_id, postback_payload
 
 # Generate tuples of (sender_id, message_text) from the provided payload.
+# This part technically clean up received data to pass only meaningful data to processIncoming() function
 def messaging_events(payload):
     
     data = json.loads(payload)

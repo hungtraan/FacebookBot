@@ -200,7 +200,7 @@ def isYelp(sentence):
 
     return False
 
-# input: pattern.en sentence object, unless specified otherwise in inp_type
+# input: string
 def isDismissPreviousRequest(string):
     string = string.lower()
     stop_signals = ["never mind", "stop", "dismiss", "cancel", "dont want", "dont need", "do not"]
