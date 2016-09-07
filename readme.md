@@ -20,10 +20,11 @@ Optimist Prime is a Facebook Messenger Bot that supports Voice Recognition, Natu
 
 > Note: Optimist Prime is implemented with different APIs for features like user management, voice recognition, restaurant search, trending news search, so it takes some time to config & get it up and running. For a more basic "echo bot" that responses to you whatever you say to it, use **`facebook-echobot.py`**, or head over to Facebook's own Messenger app [Quick Start](https://developers.facebook.com/docs/messenger-platform/quickstart/). The echo bot is useful to get a quick glance of the fundamental ideas behind a Facebook Messenger Bot.
 
-#### Database and API keys
+#### Dependencies, Database and API keys
 
 In order to build your own bot with all features of Optimist Prime, you'll need a few set-ups:
 
+0. Install dependencies: `pip install -r requirements.txt` (preferably getting into your virtual environment `virtualenv`/`venv` - read all about `pip` and `venv` [here](https://packaging.python.org/installing/))
 1. [Create a Facebook Page](https://www.facebook.com/pages/create/): A bare-bone Page to "assign" the Bot to will do. The Bot will actually be this page, i.e. you'll be "talking" to the page
 2. [Create a Facebook App](https://developers.facebook.com/docs/apps/register), get its Page Access Token (details at Facebook's [Quick Start](https://developers.facebook.com/docs/messenger-platform/quickstart/))
 3. Create a MongoDB database (User management, Conversational Context management, Logging), a local MongoDB is fine ([Tutorial](https://scotch.io/tutorials/an-introduction-to-mongodb) to set up a local instance). I used [Heroku's mLab MongoDB](https://elements.heroku.com/addons/mongolab). It'll take you 10 minutes to get a Heroku account and set up a MongoDB database there.
