@@ -56,6 +56,31 @@ Get the `https` URL (Facebook requires `https` secured webhooks) and subscribe y
 
 ![webhook](https://monosnap.com/file/LJITuhaxURs7MXpDQrvDKBk7yIrBER.png)
 
+##### Deploying to the cloud
+
+I've provided the Procfile for deployment on **Heroku**. You can create a Heroku app, spin up a free dyno and deploy your own Optimist Prime with [this tutorial](https://devcenter.heroku.com/articles/getting-started-with-python#introduction).
+
+For the voice recognition to work, we'll need to include `ffmpeg` on our Heroku dyno, which could be done by adding a Heroku Buildpack to your app's Settings tab on Dashboard:
+`https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git`
+![buildpack](https://monosnap.com/file/KrXLU25L6NEWvP36lNO4GgCOLWF419.png)
+
+Finally, set your environment variable for the path to `ffmpeg`:
+```bash
+heroku config:set FFMPEG_PATH=/app/vendor/ffmpeg/ffmpeg
+```
+Or on your app’s settings tab on Dashboard:
+![configvar](https://monosnap.com/file/eipdi9mPeKyQDTLvQWMcNUHEtJZ7lG.png)
+
+Now you're ready to deploy. [Tutorial on how to deploy with Heroku and git](https://devcenter.heroku.com/articles/git).
+
+In later iterations, all you need to do with Heroku is the glorious 3 lines:
+```bash
+git add .
+git commit -am "Awesome commit"
+git push heroku master
+```
+
+**Amazon Web Service**: I'm a fan of AWS and have had great experience with Beanstalk. However, if you want to use AWS, you'll need to go the extra mile of obtaining an SSL cert to have a secured webhook. For the purposes of Optimist Prime, I decided to go with Heroku instead, since it readily provides a `https` connections.
 
 
 ## Voice Recognition
@@ -283,16 +308,16 @@ There are also other useful types of message (also implemented in this bot), inc
 
 ## Discussion
 
-##### The nitty-gritty detail of implementing voice recognition capability for the Facebook Messenger Bot
+#### The nitty-gritty detail of implementing voice recognition & scalability
 
-The catch for processing voice messages from the Facebook Messenger API is *converting Facebook's compressed mp3 to a valid input format* for the Speech-to-Text API. Both IBM and Google do not support mp3, and their input format include principle audio formats like WAV, FLAC, OGG, etc. Therefore, Optimist Prime actually has to download the mp3 audio, convert it to WAV, and upload it to the Speech API, which is a round trip that significantly increase response time for each audio command. In this project, I used `ffmpeg` and call it with Python's `subprocess` to convert the audio.
+The catch for processing voice messages from the Facebook Messenger API is **converting Facebook's compressed mp3 to a valid input format** for the Speech-to-Text API. Both IBM and Google do not support mp3, and their input format include principle audio formats like WAV, FLAC, OGG, etc. Therefore, Optimist Prime actually has to download the mp3 audio, convert it to WAV, and upload it to the Speech API, which is a round trip that significantly increases response time for each audio command. In this project, I used `ffmpeg` and call it with Python's `subprocess` to convert the audio.
 
 > `subprocess` is a Python tool that allows you to trigger command line-like commands, so what the program does is equivalent to it calling another program "by typing this command into the command line"
 
 ![ffmpeg in subprocess](https://monosnap.com/file/LWCiJmkZsTRcgeEBXRr5xGBU4gzIpi.png)
 
 Under the hood, the bot does the following:
-- Receives json of the user's audio command
+- Receive json of the user's audio command
 - Download this audio file
 - Use `ffmpeg` to convert:
 	+ Use Python `subprocess` to initiate a native ffmpeg command (just as you would do in the command shell)
