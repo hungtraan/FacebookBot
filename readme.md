@@ -51,7 +51,7 @@ Now that you've got the bot running, you'll need to set up a webhook for Faceboo
 ```
 ![ngrok](https://monosnap.com/file/HJckHGSorOuoEqm6kBNFb7MQWdNeHf.png)
 
-Get the `https` URL (Facebook requires `https` secured webhooks) and subscribe your Facebook App to this webhook. The verification token is your own token defined in `OWN_VERIFYING_TOKEN` in `config.py`.
+Get the `https` URL (Facebook requires `https` secured webhooks) and subscribe your Facebook App to this webhook. The verification token is your own token defined in `OWN_VERIFICATION_TOKEN` in `config.py`.
 
 ![webhook](https://monosnap.com/file/LJITuhaxURs7MXpDQrvDKBk7yIrBER.png)
 
@@ -105,9 +105,8 @@ Example commands:
 		find me a brewery near downtown san francisco.
 ```
 
-After receiving the command, Optimist Prime would ask for your location. You can input either a text/voice-based **location name** or send your **exact GPS location** (with Facebook Messenger on mobile devices). The Yelp Search API requires a coordinate for exact location search, so the reverse lookup from location-name to coordinate is handled by the the geocoding capability of the Geopy library. An alternative (possibly more robust) would be [Google Maps Geocoding API](https://developers.google.com/maps/documentation/geocoding/intro). The current Optimist Prime uses `Geopy`.
-
-Optimist Prime also offer to save your location for future reference.
+After receiving the command, Optimist Prime would ask for your location. You can input either a text/voice-based **location name** or send your **exact GPS location** (with Facebook Messenger on mobile devices). The Yelp Search API requires a coordinate for exact location search, so the reverse lookup from location-name to coordinate is handled by the the geocoding capability of the Geopy library. An alternative (probably more updated and smarter with complex names) would be [Google Maps Geocoding API](https://developers.google.com/maps/documentation/geocoding/intro). Optimist Prime currently uses `Geopy`. Optimist Prime also offers to save your location for future reference.
+![Smart Location Search](https://monosnap.com/file/5ox1ff0xx1l6r2cjTD7o7Gcb8aqgKF.png)
 
 Optimist Prime leverage Yelp's API. Included in the code is both the APIv2 (stable) and APIv3 (developer preview). Both require you to acquire their API key.
 
@@ -133,6 +132,7 @@ Example commands:
     Get trending news about the US in the Olympics.
     look for latest news on the Olympics.
 ```
+![News Search](https://monosnap.com/file/wTn8lqcV1mgryNs5bMEG2LFcCQb1ff.png)
 
 The Trending News Search leverages [Webhose.io API](https://webhose.io/SDK). The service crawls the web for news along with its social strength (Facebook likes, Shares, Twitter posts). In case of user searching for not-so-trending or niche topics, Optimist Prime lowers its "trending" criteria as well as search time frame to get the best results.
 
@@ -145,6 +145,7 @@ Example commands:
 	memorize this (stop talking, Optimist Prime will prompt you to start your memo)
 	can you memorize this for me?
 ```
+![Memo](https://monosnap.com/file/cYHCLLXhdSTPeQi0qtTl3dhF7S209k.png)
 
 This feature is still in its infancy/concept. After the user saves a memo, s/he can access it on the web with the link provided by the bot.
 
