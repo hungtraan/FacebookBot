@@ -1,0 +1,29 @@
+/* TEMPLATE STYLES */
+main {
+    margin-top:3rem;;
+}
+main .card {
+    margin-bottom: 2rem;
+}
+@media only screen and (max-width: 768px) {
+    .read-more {
+        text-align: center;
+    }
+}
+
+.modal-body{
+	max-height: 500px;
+	overflow: scroll;
+}
+
+.btn-fb {
+	background-color: #3B5998;
+}
+.btn-fb:hover {
+    background-color: #4264aa;
+}
+
+p.card-text{
+    height: 3em;
+    overflow: hidden;
+}

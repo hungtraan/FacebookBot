@@ -1,21 +1,27 @@
 from yelp.client import Client
+from YelpAPIv3 import Client3
+from GoogleMapAPI import GoogleMap
 from yelp.oauth1_authenticator import Oauth1Authenticator
 from math import radians, cos, sin, asin, sqrt
+from datetime import datetime
 import config
 from bs4 import BeautifulSoup
 import requests
-# Yelp Auth
+
+# Yelp Auth API v2
 auth = Oauth1Authenticator(
     consumer_key=config.CONSUMER_KEY,
     consumer_secret=config.CONSUMER_SECRET,
     token=config.TOKEN,
     token_secret=config.TOKEN_SECRET
 )
-yelpClient = Client(auth)
 
-def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
+yelpClient = Client(auth)
+yelpClient3 = Client3(config.YELP_V3_TOKEN)
+
+def yelp_search_v2(searchTerm, location, coordinates=None, limit=None, offset=0):
     if limit is None:
-        limit = 5
+        limit = 10
 
     params = {
         'term': searchTerm,
@@ -32,13 +38,13 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
     try:
         if coordinates is not None:
             response = yelpClient.search_by_coordinates(coordinates[0], coordinates[1], **params)
-            print response
         elif location != '':
             response = yelpClient.search(location, **params)
     except Exception, e:
         print e
         return returnData
-            
+    
+    # v2      
     if len(response.businesses):
         returnData['status'] = 1
         for biz in response.businesses:
@@ -57,6 +63,76 @@ def yelp_search(searchTerm, location, coordinates=None, limit=None, offset=0):
 
     return returnData
 
+def yelp_search_v3(searchTerm, location, coordinates=None, limit=None, offset=0):
+    if limit is None:
+        limit = 10
+
+    params = {
+        'term': searchTerm,
+        'lang': 'en',
+        'limit': limit,
+        'offset': offset,
+        'location': location
+        # 'category_filter':''
+    }
+
+    returnData = {}
+    returnData['businesses'] = []
+    returnData['status'] = 0
+    print coordinates
+    try:
+        if coordinates is not None:
+            params['latitude'] = coordinates[0]
+            params['longitude'] = coordinates[1]
+            response = yelpClient3.search_by_coordinates(**params)
+            # print response
+        elif location != '':
+            response = yelpClient3.search(**params)
+            # print response
+    except Exception, e:
+        print e
+        return returnData
+            
+    if len(response['businesses']):
+        returnData['status'] = 1
+        for biz in response['businesses']:
+            details = yelpClient3.get_details(biz['id'])
+            business = {}
+            business['id'] = biz['id']
+            business['name'] = biz['name']
+            business['price'] = biz['price'] if 'prize' in biz else ""
+            # business['hours'] = details['hours'][0]['open']
+            if 'hours' in details and len(details['hours']) > 0:
+                business['is_open_now'] = details['hours'][0]['is_open_now']
+                if len(details['hours'][0]['open']) > 0:
+                    business['hours_today'] = hours_today(details['hours'][0]['open'])
+            business['address'] = biz['location']['address1']
+            if coordinates is not None:
+                business['distance'] = calculate_distance(coordinates, [biz['coordinates']['latitude'], biz['coordinates']['longitude']])
+            business['rating'] = str(biz['rating']) +u"\u2605 (" + str(biz['review_count']) + " reviews)"
+            business['url'] = biz['url']
+            business['image_url'] = biz['image_url']
+            business['categories'] = ', '.join([b['title'] for b in biz['categories']])
+            returnData['businesses'].append(business)
+    
+    return returnData
+
+def hours_today(hours, api='yelp'):
+    todayWkday = datetime.weekday(datetime.now())
+    if todayWkday >= len(hours):
+        return ""
+    if api == 'yelp':
+        start = hours[todayWkday]['start']
+        end = hours[todayWkday]['end']
+    elif api == 'google':
+        start = hours[todayWkday]['open']['time']
+        start = hours[todayWkday]['close']['time']
+    
+    return "%s:%s - %s:%s"%(start[:2], start[2:], end[:2], end[2:])
+
+def get_reviews(business_id, limit=3):
+    return yelpClient3.get_reviews(business_id)['reviews']
+    
 def calculate_distance(coord1, coord2):
     """
     Calculate the great circle distance between two points 
@@ -94,3 +170,51 @@ def filtered_search(returnData, filter_list):
                         result.append(business)
 
     return result
+
+googlePlaceClient = GoogleMap()
+
+# Not using Google Place Search since it doesn't provide a image URL
+# but rather an image blob
+def google_place_search(searchTerm, location, coordinates=None):
+
+    query = "%s %s"%(searchTerm, location) if location is not None else searchTerm
+    params = {
+        'query': query,
+    }
+    if coordinates is not None:
+        params['location'] = ",".join([str(coord) for coord in coordinates])
+        params['radius'] = 10000 # meters
+
+    returnData = {}
+    returnData['businesses'] = []
+    returnData['status'] = 0
+    
+    try:
+        results = googlePlaceClient.search_place(**params)
+        
+    except Exception, e:
+        print e
+        return returnData
+            
+    if len(results['businesses']):
+        returnData['status'] = 1
+        for biz in results:
+            details = googlePlaceClient.get_details(biz['place_id'])
+            business = {}
+            business['id'] = biz['id']
+            business['name'] = biz['name']
+            business['rating'] = str(biz['rating']) +u"\u2605 (" + str(biz['review_count']) + " reviews)"
+            business['price'] = ""
+            if 'opening_hours' in details:
+                business['opening_hours'] = details['opening_hours']['open_now']
+                if len(details['opening_hours']['periods']) > 0:
+                    business['hours_today'] = hours_today(details['opening_hours']['periods'], 'google')
+            business['address'] = biz['formatted_address']
+            if coordinates is not None:
+                business['distance'] = calculate_distance(coordinates, [biz['geometry']['location']['lat'], biz['geometry']['location']['lng']])
+            business['url'] = details['url']
+            business['image_url'] = ""
+            business['categories'] = ""
+            returnData['businesses'].append(business)
+    
+    return returnData

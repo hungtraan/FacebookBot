@@ -1,0 +1,144 @@
+{% extends "layout.html" %}
+{% block body %}
+    <main>
+        <!--Main layout-->
+        <div class="container">
+          
+           <!--Page heading-->
+            <div class="row">
+                <div class="col-md-8">
+                    <h1 class="h1-responsive">
+                    {% if user_name %}{{ user_name }}'s
+                    {% else %}My
+                    {% endif %} memos
+                        <small class="text-muted"></small>
+                    </h1>
+                </div>
+                <div class="col-md-4">
+                    <div class="social-section">
+                        {% if not session.logged_in %}
+                        <a href="/login" class="btn btn-fb waves-effect waves-light pull-right fb-login-button" data-max-rows="1" data-size="large" data-show-faces="true" data-auto-logout-link="true"><i class="fa fa-facebook left"></i> Login with Facebook</a>
+                        {% else %}
+                        <a href="/logout" class="btn btn-fb waves-effect waves-light pull-right fb-login-button" data-max-rows="1" data-size="large" data-show-faces="true" data-auto-logout-link="true"><i class="fa fa-facebook left"></i> Log out</a>
+                        {% endif %}
+                        <div class="fb-login-button pull-right" data-max-rows="1" data-size="large" data-auto-logout-link="true"></div>
+                    </div>
+                </div>
+            </div>
+            <!--/.Page heading-->
+            <hr>
+            
+            <!--First row-->
+            <div class="row">
+                <!--First column-->
+                {% for memo in memo_data %}
+                <div class="col-md-6">
+                    <!--Card-->
+                    <div class="card">
+
+                        <!--Card image-->
+                        <div class="view overlay hm-white-slight">
+                            <!-- <img src="http://mdbootstrap.com/images/regular/city/img%20(18).jpg" class="img-fluid" alt=""> -->
+                            <a href="#!">
+                                <div class="mask"></div>
+                            </a>
+                        </div>
+                        <!--/.Card image-->
+
+                        <!--Card content-->
+                        <div class="card-block">
+                            <!--Title-->
+                            <h4 class="card-title">{{ memo['title'] }}</h4>
+                            <p class="card-title">{{ memo['created_at'] }}</p>
+
+                            <!--Text-->
+                            <p class="card-text">{{ memo['content'][:140] }}...</p>
+                            <div class="read-more">
+                                <a href="#!" class="btn btn-primary" data-toggle="modal" data-target="#myModal">Read more</a>
+                            </div>
+                            <!-- <div class="card-data pull-right col-xs-6">
+                                <i class="fa fa-clock-o"></i> 05/10/2015
+                            </div> -->
+                        </div>
+                        <!--/.Card content-->
+
+                    </div>
+                    <!--/.Card-->    
+                </div>
+                {% endfor %}
+                <!--/.First column-->
+                
+                
+            </div>
+            <!--/.First row-->
+            
+           
+            <hr>
+            
+            <!--Pagination-->   
+            <nav class="row text-xs-center">
+                <ul class="pagination">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#!" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                            <span class="sr-only">Previous</span>
+                        </a>
+                    </li>
+                    <li class="page-item active">
+                        <a class="page-link" href="#!">1 <span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="page-item"><a class="page-link" href="#!">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#!">3</a></li>
+                    <li class="page-item"><a class="page-link" href="#!">4</a></li>
+                    <li class="page-item"><a class="page-link" href="#!">5</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#!" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                            <span class="sr-only">Next</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <!--/.Pagination-->
+            <hr>
+        </div>
+        <!--/.Main layout-->   
+    </main>
+    <!-- Modal -->
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <!--Content-->
+            <div class="modal-content">
+                <!--Header-->
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">My Memo</h4>
+                    <p>16:28 - August 6, 2016</p>
+                </div>
+                <!--Body-->
+                <div class="modal-body">
+                    So this is my first recording for the memo let's see how it turns out
+                    Maecenas semper vehicula venenatis. Ut hendrerit condimentum justo eu ultrices. Pellentesque semper dolor eget eros varius imperdiet. Fusce eu sem sit amet arcu lacinia accumsan ac et urna. Quisque nec dolor vel massa lacinia dignissim. Quisque ut libero porta, fringilla nisi et, lobortis lectus. Maecenas quis lobortis tortor. Sed rhoncus metus rutrum est tempus, non egestas orci vehicula. Phasellus tincidunt, tellus vitae lacinia feugiat, dolor arcu scelerisque ex, id condimentum libero risus et erat. Morbi maximus lobortis purus sed efficitur. Fusce vitae diam semper, malesuada nulla et, placerat nulla.
+                </div>
+                <!--Footer-->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary disabled">Save changes</button>
+                </div>
+            </div>
+            <!--/.Content-->
+        </div>
+    </div>
+    <!--Footer-->
+    <footer class="page-footer center-on-small-only primary-color-dark">
+        <!--Copyright-->
+        <div class="footer-copyright">
+            <div class="containter-fluid">
+                © 2016 Copyright: Hung Traan
+            </div>    
+        </div>
+        <!--/.Copyright-->        
+    </footer>
+{% endblock %}
