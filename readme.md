@@ -5,6 +5,30 @@ Optimist Prime is a Facebook Messenger Bot that supports Voice Recognition, Natu
 
 (For a simpler "echo bot" proof-of-concept implementation of the Facebook Messenger Bot, check out [this simplified project](https://github.com/hungtraan/FacebookBot-echobot-simple) with [a 10-minute tutorial](https://cli.traan.vn/how-to-create-a-facebook-bot-in-10-minutes-the-complete-tutorial-from-zero-to-hero-ku-352dca274046))
 
+**Table of Contents**
+
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Usage](#usage)
+  - [Dependencies, Database and API keys](#dependencies-database-and-api-keys)
+  - [Deploying to the cloud](#deploying-to-the-cloud)
+  - [Voice Recognition](#voice-recognition)
+  - [Natural Language Processing](#natural-language-processing)
+  - [Custom features](#custom-features)
+    - [1. Business/Restaurant Search](#1-businessrestaurant-search)
+    - [2. Trending News Search](#2-trending-news-search)
+    - [3. Memo](#3-memo)
+- [Appendix](#appendix)
+  - [Facebook Messenger API](#facebook-messenger-api)
+  - [Sample Facebook Messenger API Messages](#sample-facebook-messenger-api-messages)
+    - [1. Text](#1-text)
+    - [2. Audio](#2-audio)
+    - [3. Location](#3-location)
+  - [Discussion](#discussion)
+    - [The nitty-gritty detail of implementing voice recognition & scalability](#the-nitty-gritty-detail-of-implementing-voice-recognition-&-scalability)
+
+
 #### Features:
 - Voice Recognition
 - Understanding commands with Natural Language Processing and contextual follow-up
