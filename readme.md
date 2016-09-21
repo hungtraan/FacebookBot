@@ -110,7 +110,7 @@ git push heroku master
 
 
 ## Voice Recognition
-The Voice Recognition is implemented with both [IBM Watson's Speech-to-Text API](https://www.ibm.com/watson/developercloud/speech-to-text.html) and [Google Cloud Speech API](https://cloud.google.com/speech/) (default to IBM Watson as Google CLoud Speech is still in Beta, and my tests showed Watson so be more accurate). The current implementation is based on their RESTful methods (both support real time processing with WebSocket and WebRTC, respectively). Both are available for free at development-level use.
+The Voice Recognition is implemented with both [IBM Watson's Speech-to-Text API](https://www.ibm.com/watson/developercloud/speech-to-text.html) and [Google Cloud Speech API](https://cloud.google.com/speech/) (default to IBM Watson as Google Cloud Speech is still in Beta, and my tests showed Watson so be more accurate). The current implementation is based on their RESTful methods (both support real time processing with WebSocket and WebRTC, respectively). Both are available for free at development-level use.
 
 To use IBM Watson's Speech-to-Text, you'll need to create a [IBM Bluemix account](https://console.ng.bluemix.net/) and add the service to your account, then retrieve the API's username and password. Lastly, copy these credentials to `Speech/credentials.py`.
 
