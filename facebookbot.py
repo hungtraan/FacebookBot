@@ -135,7 +135,7 @@ def memo(user_id):
 @app.route('/', methods=['GET'])
 def handle_verification():
     print "Handling Verification."
-    if request.args.get('hub.verify_token', '') == app.config['OWN_VERIFICATION_TOKEN']:
+    if request.args.get('hub.verify_token', '') == app.config['OWN_WEBHOOK_TOKEN']:
         print "Webhook verified!"
         return request.args.get('hub.challenge', '')
     else:

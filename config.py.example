@@ -3,7 +3,7 @@
 # Remove .example from this file's name after filling out all the keys
 
 # Your own webhook verification token for Facebook to forward to
-OWN_VERIFICATION_TOKEN='your_own_token'
+OWN_WEBHOOK_TOKEN='your_own_token'
 
 # Do not allow debug mode for production
 DEBUG=False
