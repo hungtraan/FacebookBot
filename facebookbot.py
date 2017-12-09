@@ -170,7 +170,7 @@ def handle_messages():
             elif postback_payload == 'OPTIMIST_GET_STARTED':
                 if not Mongo.user_exists(users, sender_id):
                     g.user = Mongo.get_user_mongo(users, sender_id)
-                    return handle_first_time_user(users, g.user)
+                    return handle_first_time_user(g.user)
 
     # Handle messages
     elif webhook_type == 'message':
@@ -219,7 +219,7 @@ def processIncoming(user_id, message, just_text=False):
     # First time user
     if not Mongo.user_exists(users, user_id):
         g.user = Mongo.get_user_mongo(users, user_id)
-        return handle_first_time_user(users, g.user)
+        return handle_first_time_user(g.user)
     else:
         g.user = Mongo.get_user_mongo(users, user_id)
 
@@ -643,7 +643,7 @@ def handle_quick_reply(user_id, context, cmd):
         return handle_find_food(user_id, context, None, None, message, None, 'receive_location_gps', 1)
 
 
-def handle_first_time_user(users, user):
+def handle_first_time_user(user):
     user_id = user['user_id']
     token = app.config['PAT']
 
