@@ -130,7 +130,7 @@ The result text processed by this Speech-to-Text API is then returned just like 
 
 Optimist Bot receives commands from users as both text and voice input, and understands commands in natural language. 
 
-This is done by using the `pattern` NLP [library](http://www.clips.ua.ac.be/pages/pattern-en), which allows the bot to deconstruct the user's text input and recognize parts of speech. For now, the model for categorizing commands are simple with stopwords and sentence structures, but as our data grows, we can start building more complex machine learning categorization for each function.
+This is done by using the `pattern` NLP [library](https://www.analyticsvidhya.com/blog/2021/11/pattern-library-for-natural-language-processing-in-python/#:~:text=What%20is%20Pattern%20Library%3F,%2C%20NLP%2C%20and%20Machine%20Learning.), which allows the bot to deconstruct the user's text input and recognize parts of speech. For now, the model for categorizing commands are simple with stopwords and sentence structures, but as our data grows, we can start building more complex machine learning categorization for each function.
 
 The command system allows users to use the following features, all of which are under the `Utils` folder.
 
